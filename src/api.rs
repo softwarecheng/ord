@@ -190,3 +190,16 @@ pub struct SatInscriptions {
   pub more: bool,
   pub page: u64,
 }
+
+// https://github.com/OLProtocol/ordx customization
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct OrdxBlockInscription {
+  pub inscription: Inscription,
+  pub output: Output,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct OrdxBlockInscriptions {
+  pub height: u32,
+  pub inscriptions: Vec<OrdxBlockInscription>,
+}

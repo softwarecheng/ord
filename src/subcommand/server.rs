@@ -254,6 +254,8 @@ impl Server {
         .route("/static/*path", get(Self::static_asset))
         .route("/status", get(Self::status))
         .route("/tx/:txid", get(Self::transaction))
+        //https://github.com/OLProtocol/ordx customization 
+        .route("/ordx/block/inscriptions/:height", get(Self::ordx_block_inscriptions)) 
         .layer(Extension(index))
         .layer(Extension(server_config.clone()))
         .layer(Extension(settings.clone()))
@@ -1778,6 +1780,98 @@ impl Server {
     }
 
     Redirect::to(&destination)
+  }
+
+  async fn ordx_block_inscriptions(
+    Extension(server_config): Extension<Arc<ServerConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+    Path(DeserializeFromStr(block_height)): Path<DeserializeFromStr<u32>>,
+  ) -> ServerResult<Response> {
+    Ok(
+      {
+        let inscription_id_list = index.get_inscriptions_in_block(block_height)?;
+
+        Json(api::OrdxBlockInscriptions {
+          height: block_height,
+          inscriptions: inscription_id_list
+            .iter()
+            .map(|inscription_id| {
+              let query_inscription_id = query::Inscription::Id(*inscription_id);
+              let info = Index::inscription_info(&index, query_inscription_id)?
+                .ok_or_not_found(|| format!("inscription {query_inscription_id}"))?;
+
+              // api inscription
+              let api_inscription = api::Inscription {
+                address: info
+                  .output
+                  .as_ref()
+                  .and_then(|o| {
+                    server_config
+                      .chain
+                      .address_from_script(&o.script_pubkey)
+                      .ok()
+                  })
+                  .map(|address| address.to_string()),
+                charms: Charm::ALL
+                  .iter()
+                  .filter(|charm| charm.is_set(info.charms))
+                  .map(|charm| charm.title().into())
+                  .collect(),
+                children: info.children,
+                content_length: info.inscription.content_length(),
+                content_type: info.inscription.content_type().map(|s| s.to_string()),
+                fee: info.entry.fee,
+                height: info.entry.height,
+                id: info.entry.id,
+                next: info.next,
+                number: info.entry.inscription_number,
+                parent: info.parent,
+                previous: info.previous,
+                rune: info.rune,
+                sat: info.entry.sat,
+                satpoint: info.satpoint,
+                timestamp: timestamp(info.entry.timestamp).timestamp(),
+                value: info.output.as_ref().map(|o| o.value),
+              };
+
+              // api output
+              let mut outpoint: OutPoint = api_inscription.satpoint.outpoint;
+              if outpoint.txid != inscription_id.txid {
+                outpoint = OutPoint::new(inscription_id.txid, 0);
+              }
+              let sat_ranges = index.list(outpoint)?;
+              let inscriptions = index.get_inscriptions_on_output(outpoint)?;
+              let indexed = index.contains_output(&outpoint)?;
+              let runes = index.get_rune_balances_for_outpoint(outpoint)?;
+              let spent = index.is_output_spent(outpoint)?;
+              let output = index
+                .get_transaction(outpoint.txid)?
+                .ok_or_not_found(|| format!("output {outpoint}"))?
+                .output
+                .into_iter()
+                .nth(outpoint.vout as usize)
+                .ok_or_not_found(|| format!("output {outpoint}"))?;
+              let api_output = api::Output::new(
+                server_config.chain,
+                inscriptions,
+                outpoint,
+                output,
+                indexed,
+                runes,
+                sat_ranges,
+                spent,
+              );
+
+              Ok(api::OrdxBlockInscription {
+                inscription: api_inscription,
+                output: api_output,
+              })
+            })
+            .collect::<Result<Vec<api::OrdxBlockInscription>, ServerError>>()?,
+        })
+      }
+      .into_response(),
+    )
   }
 }
 
