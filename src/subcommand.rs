@@ -7,6 +7,7 @@ pub mod epochs;
 pub mod find;
 pub mod index;
 pub mod list;
+pub mod ordx;
 pub mod parse;
 pub mod runes;
 pub(crate) mod server;
@@ -51,6 +52,8 @@ pub(crate) enum Subcommand {
   Traits(traits::Traits),
   #[command(about = "Wallet commands")]
   Wallet(wallet::WalletCommand),
+  #[command(subcommand, about = "Ordx commands")]
+  Ordx(ordx::OrdxSubcommand),
 }
 
 impl Subcommand {
@@ -77,6 +80,7 @@ impl Subcommand {
       Self::Teleburn(teleburn) => teleburn.run(),
       Self::Traits(traits) => traits.run(),
       Self::Wallet(wallet) => wallet.run(settings),
+      Self::Ordx(ordx) => ordx.run(settings),
     }
   }
 }

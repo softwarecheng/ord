@@ -699,6 +699,61 @@ impl Index {
     Ok(())
   }
 
+  pub(crate) fn export_ordx(&self, dirname: &String) -> Result {
+    let path = Path::new(dirname);
+    if !path.exists() {
+      match fs::create_dir_all(path) {
+        Ok(_) => println!("Directory created successfully."),
+        Err(e) => println!("Error creating directory: {}", e),
+      }
+    }
+
+    let mut writer = BufWriter::new(File::create(dirname)?);
+    let rtx = self.database.begin_read()?;
+
+    let blocks_indexed = rtx
+      .open_table(HEIGHT_TO_BLOCK_HEADER)?
+      .range(0..)?
+      .next_back()
+      .transpose()?
+      .map(|(height, _header)| height.value() + 1)
+      .unwrap_or(0);
+
+    writeln!(writer, "# export at block height {}", blocks_indexed)?;
+
+    log::info!("exporting database tables to {dirname}");
+
+    let sequence_number_to_satpoint = rtx.open_table(SEQUENCE_NUMBER_TO_SATPOINT)?;
+
+    for result in rtx
+      .open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?
+      .iter()?
+    {
+      let entry = result?;
+      let sequence_number = entry.0.value();
+      let entry = InscriptionEntry::load(entry.1.value());
+      let satpoint = SatPoint::load(
+        *sequence_number_to_satpoint
+          .get(sequence_number)?
+          .unwrap()
+          .value(),
+      );
+
+      write!(
+        writer,
+        "{}\t{}\t{}",
+        entry.inscription_number, entry.id, satpoint
+      )?;
+      writeln!(writer)?;
+
+      if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
+        break;
+      }
+    }
+    writer.flush()?;
+    Ok(())
+  }
+
   fn begin_read(&self) -> Result<rtx::Rtx> {
     Ok(rtx::Rtx(self.database.begin_read()?))
   }
