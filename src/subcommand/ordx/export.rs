@@ -4,6 +4,8 @@ use super::*;
 pub(crate) struct Export {
   #[arg(long, help = "export <Dir>")]
   dir: String,
+  #[arg(long, help = "export <CHAIN>")]
+  chain: Chain,
 }
 
 impl Export {
@@ -11,7 +13,7 @@ impl Export {
     let index = Index::open(&settings)?;
 
     index.update()?;
-    index.export_ordx(&self.dir)?;
+    index.export_ordx(&self.dir, self.chain)?;
 
     Ok(None)
   }

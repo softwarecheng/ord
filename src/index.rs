@@ -699,7 +699,7 @@ impl Index {
     Ok(())
   }
 
-  pub(crate) fn export_ordx(&self, dirname: &String) -> Result {
+  pub(crate) fn export_ordx(&self, dirname: &String, chain: Chain) -> Result {
     let path = Path::new(dirname);
     if !path.exists() {
       match fs::create_dir_all(path) {
@@ -707,10 +707,9 @@ impl Index {
         Err(e) => println!("Error creating directory: {}", e),
       }
     }
+    log::info!("exporting ordx data to directory: {dirname}");
 
-    let mut writer = BufWriter::new(File::create(dirname)?);
     let rtx = self.database.begin_read()?;
-
     let blocks_indexed = rtx
       .open_table(HEIGHT_TO_BLOCK_HEADER)?
       .range(0..)?
@@ -719,38 +718,100 @@ impl Index {
       .map(|(height, _header)| height.value() + 1)
       .unwrap_or(0);
 
-    writeln!(writer, "# export at block height {}", blocks_indexed)?;
+    log::info!("export at block height {blocks_indexed}");
 
-    log::info!("exporting database tables to {dirname}");
+    for height in 2413343..=blocks_indexed {
+      let inscription_id_list = self.get_inscriptions_in_block(height)?;
+      let inscriptions = inscription_id_list
+        .iter()
+        .map(
+          |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
+            let query_inscription_id = query::Inscription::Id(*inscription_id);
+            let info = Index::inscription_info(self, query_inscription_id)?.ok_or_else(|| {
+              anyhow::Error::msg(format!("inscription {query_inscription_id} not found"))
+            })?;
 
-    let sequence_number_to_satpoint = rtx.open_table(SEQUENCE_NUMBER_TO_SATPOINT)?;
+            let api_inscription = api::Inscription {
+              address: info
+                .output
+                .as_ref()
+                .and_then(|o| chain.address_from_script(&o.script_pubkey).ok())
+                .map(|address| address.to_string()),
+              charms: Charm::ALL
+                .iter()
+                .filter(|charm| charm.is_set(info.charms))
+                .map(|charm| charm.title().into())
+                .collect(),
+              children: info.children,
+              content_length: info.inscription.content_length(),
+              content_type: info.inscription.content_type().map(|s| s.to_string()),
+              fee: info.entry.fee,
+              height: info.entry.height,
+              id: info.entry.id,
+              next: info.next,
+              number: info.entry.inscription_number,
+              parent: info.parent,
+              previous: info.previous,
+              rune: info.rune,
+              sat: info.entry.sat,
+              satpoint: info.satpoint,
+              timestamp: timestamp(info.entry.timestamp).timestamp(),
+              value: info.output.as_ref().map(|o| o.value),
+            };
 
-    for result in rtx
-      .open_table(SEQUENCE_NUMBER_TO_INSCRIPTION_ENTRY)?
-      .iter()?
-    {
-      let entry = result?;
-      let sequence_number = entry.0.value();
-      let entry = InscriptionEntry::load(entry.1.value());
-      let satpoint = SatPoint::load(
-        *sequence_number_to_satpoint
-          .get(sequence_number)?
-          .unwrap()
-          .value(),
-      );
+            // api output
+            let mut outpoint: OutPoint = api_inscription.satpoint.outpoint;
+            if outpoint.txid != inscription_id.txid {
+              outpoint = OutPoint::new(inscription_id.txid, 0);
+            }
+            let sat_ranges = self.list(outpoint)?;
+            let inscriptions = self.get_inscriptions_on_output(outpoint)?;
+            let indexed = self.contains_output(&outpoint)?;
+            let runes = self.get_rune_balances_for_outpoint(outpoint)?;
+            let spent = self.is_output_spent(outpoint)?;
+            let output = self
+              .get_transaction(outpoint.txid)?
+              .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
+              .output
+              .into_iter()
+              .nth(outpoint.vout as usize)
+              .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
+            let api_output = api::Output::new(
+              chain,
+              inscriptions,
+              outpoint,
+              output,
+              indexed,
+              runes,
+              sat_ranges,
+              spent,
+            );
 
-      write!(
-        writer,
-        "{}\t{}\t{}",
-        entry.inscription_number, entry.id, satpoint
-      )?;
-      writeln!(writer)?;
+            Ok(api::OrdxBlockInscription {
+              inscription: api_inscription,
+              output: api_output,
+            })
+          },
+        )
+        .collect::<Result<Vec<api::OrdxBlockInscription>, Error>>()?;
+
+      let ordx_block_inscriptions = api::OrdxBlockInscriptions {
+        height,
+        inscriptions,
+      };
+
+      if ordx_block_inscriptions.inscriptions.len() > 1 {
+        let json = serde_json::to_string(&ordx_block_inscriptions)?;
+        let filename = format!("{dirname}/{height}.json");
+        let mut writer = BufWriter::new(File::create(filename)?);
+        writer.write_all(json.as_bytes())?;
+        writer.flush()?;
+      }
 
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
         break;
       }
     }
-    writer.flush()?;
     Ok(())
   }
 
