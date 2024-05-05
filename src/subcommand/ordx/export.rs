@@ -6,6 +6,8 @@ pub(crate) struct Export {
   dir: String,
   #[arg(long, help = "export <CHAIN>")]
   chain: Chain,
+  #[arg(long, help = "export <ord first height>")]
+  first_height: u32,
 }
 
 impl Export {
@@ -13,7 +15,7 @@ impl Export {
     let index = Index::open(&settings)?;
 
     index.update()?;
-    index.export_ordx(&self.dir, self.chain)?;
+    index.export_ordx(&self.dir, self.chain, self.first_height)?;
 
     Ok(None)
   }

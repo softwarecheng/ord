@@ -699,7 +699,7 @@ impl Index {
     Ok(())
   }
 
-  pub(crate) fn export_ordx(&self, dirname: &String, chain: Chain) -> Result {
+  pub(crate) fn export_ordx(&self, dirname: &String, chain: Chain, first_height: u32) -> Result {
     let path = Path::new(dirname);
     if !path.exists() {
       match fs::create_dir_all(path) {
@@ -720,7 +720,7 @@ impl Index {
 
     log::info!("export at block height {blocks_indexed}");
 
-    for height in 2413343..=blocks_indexed {
+    for height in first_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
       let inscriptions = inscription_id_list
         .iter()
