@@ -7,25 +7,6 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'ord'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=ord"
-                ],
-                "filter": {
-                    "name": "ord",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "Debug executable 'ord'",
             "cargo": {
                 "args": [
@@ -60,7 +41,11 @@
                 "--http-port",
                 "80",
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_BACKTRACE": "1",
+                "RUST_LOG": "info"
+            }
         },
         {
             "type": "lldb",
@@ -95,11 +80,14 @@
                 "--index-sats",
                 "index",
                 "export",
-                "--include-addresses",
-                "--tvs",
-                "./test.tvs"
+                "--tsv",
+                "./test.tsv"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_BACKTRACE": "1",
+                "RUST_LOG": "info"
+            }
         },
         {
             "type": "lldb",
@@ -141,7 +129,11 @@
                 "--first-height",
                 "2413343",
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_BACKTRACE": "1",
+                "RUST_LOG": "info"
+            }
         },
     ]
 }

@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug, Parser)]
 pub(crate) struct Export {
-  #[arg(long, help = "export <Dir>")]
+  #[arg(long, help = "Write export to filename path")]
   dir: String,
   #[arg(long, help = "export <CHAIN>")]
   chain: Chain,

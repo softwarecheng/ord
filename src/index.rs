@@ -699,15 +699,19 @@ impl Index {
     Ok(())
   }
 
-  pub(crate) fn export_ordx(&self, dirname: &String, chain: Chain, first_height: u32) -> Result {
-    let path = Path::new(dirname);
-    if !path.exists() {
-      match fs::create_dir_all(path) {
-        Ok(_) => println!("Directory created successfully."),
-        Err(e) => println!("Error creating directory: {}", e),
+  pub(crate) fn export_ordx(&self, filename: &String, chain: Chain, first_height: u32) -> Result {
+    let path = Path::new(filename);
+    if let Some(parent_dir) = path.parent() {
+      if !parent_dir.exists() {
+        fs::create_dir_all(parent_dir)?;
       }
+    } else {
+      return Err(anyhow!(
+        "ordx data directory is not a valid path: {}",
+        path.parent().unwrap().display()
+      ));
     }
-    log::info!("exporting ordx data to directory: {dirname}");
+    log::info!("exporting ordx data to: {filename}");
 
     let rtx = self.database.begin_read()?;
     let blocks_indexed = rtx
@@ -720,6 +724,7 @@ impl Index {
 
     log::info!("export at block height {blocks_indexed}");
 
+    let mut writer = BufWriter::new(File::create(filename)?);
     for height in first_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
       let inscriptions = inscription_id_list
@@ -802,12 +807,12 @@ impl Index {
 
       if ordx_block_inscriptions.inscriptions.len() > 1 {
         let json = serde_json::to_string(&ordx_block_inscriptions)?;
-        let filename = format!("{dirname}/{height}.json");
-        let mut writer = BufWriter::new(File::create(filename)?);
-        writer.write_all(json.as_bytes())?;
-        writer.flush()?;
+        writeln!(writer, "{}", json)?;
       }
 
+      if height % 1000 == 0 {
+        writer.flush()?;
+      }
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
         break;
       }
