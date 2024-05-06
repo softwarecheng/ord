@@ -19,7 +19,7 @@ use {
     json::{GetBlockHeaderResult, GetBlockStatsResult},
     Client,
   },
-  chrono::SubsecRound,
+  chrono::{Local, SubsecRound},
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
   redb::{
@@ -722,9 +722,15 @@ impl Index {
       .map(|(height, _header)| height.value() + 1)
       .unwrap_or(0);
 
-    log::info!("export at block height {blocks_indexed}");
+    let now = Local::now();
+    let start_time = Instant::now();
+    log::info!(
+      "export at block height {blocks_indexed} at {}",
+      now.to_rfc3339()
+    );
 
     let mut writer = BufWriter::new(File::create(filename)?);
+    let mut need_flush = false;
     for height in first_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
       let inscriptions = inscription_id_list
@@ -805,18 +811,32 @@ impl Index {
         inscriptions,
       };
 
-      if ordx_block_inscriptions.inscriptions.len() > 1 {
-        let json = serde_json::to_string(&ordx_block_inscriptions)?;
-        writeln!(writer, "{}", json)?;
+      if !need_flush {
+        need_flush = ordx_block_inscriptions.inscriptions.len() > 0;
       }
 
-      if height % 1000 == 0 || height == blocks_indexed {
+      if ordx_block_inscriptions.inscriptions.len() > 0 {
+        let json = serde_json::to_string(&ordx_block_inscriptions)?;
+        writeln!(writer, "{}", json)?;
+        log::info!("exported block {height}");
+      }
+
+      if need_flush && (height % 1000 == 0 || height == blocks_indexed) {
         writer.flush()?;
+        log::info!("flushed data in block {height}");
+        need_flush = false;
       }
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
         break;
       }
     }
+
+    let duration = start_time.elapsed();
+    log::info!(
+      "export complete block height {blocks_indexed}, block number {} in {} seconds",
+      blocks_indexed - first_height + 1,
+      duration.as_secs()
+    );
     Ok(())
   }
 
