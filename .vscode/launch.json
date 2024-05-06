@@ -117,6 +117,8 @@
                 "123456",
                 "--first-inscription-height",
                 "2413343",
+                "--height-limit",
+                "2768719",
                 "--index-sats",
                 "ordx",
                 "export",
