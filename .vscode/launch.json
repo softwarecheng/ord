@@ -123,7 +123,7 @@
                 "ordx",
                 "export",
                 "--dir",
-                "./ordxtest",
+                "./testnet-all-inscription-data.ordx",
                 "--chain",
                 "test",
                 "--first-height",
