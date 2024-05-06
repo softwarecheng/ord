@@ -810,7 +810,7 @@ impl Index {
         writeln!(writer, "{}", json)?;
       }
 
-      if height % 1000 == 0 {
+      if height % 1000 == 0 || height == blocks_indexed {
         writer.flush()?;
       }
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
