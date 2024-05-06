@@ -120,7 +120,7 @@
                 "--index-sats",
                 "ordx",
                 "export",
-                "--dir",
+                "--filename",
                 "./testnet-all-inscription-data.ordx",
             ],
             "cwd": "${workspaceFolder}",

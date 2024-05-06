@@ -3,7 +3,7 @@ use super::*;
 #[derive(Debug, Parser)]
 pub(crate) struct Export {
   #[arg(long, help = "Write export to filename path")]
-  dir: String,
+  filename: String,
 }
 
 impl Export {
@@ -12,7 +12,7 @@ impl Export {
 
     index.update()?;
     index.export_ordx(
-      &self.dir,
+      &self.filename,
       settings.chain(),
       settings.first_inscription_height(),
     )?;
