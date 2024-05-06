@@ -4,10 +4,6 @@ use super::*;
 pub(crate) struct Export {
   #[arg(long, help = "Write export to filename path")]
   dir: String,
-  #[arg(long, help = "export <CHAIN>")]
-  chain: Chain,
-  #[arg(long, help = "export <ord first height>")]
-  first_height: u32,
 }
 
 impl Export {
@@ -15,7 +11,11 @@ impl Export {
     let index = Index::open(&settings)?;
 
     index.update()?;
-    index.export_ordx(&self.dir, self.chain, self.first_height)?;
+    index.export_ordx(
+      &self.dir,
+      settings.chain(),
+      settings.first_inscription_height(),
+    )?;
 
     Ok(None)
   }

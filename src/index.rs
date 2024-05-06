@@ -699,7 +699,12 @@ impl Index {
     Ok(())
   }
 
-  pub(crate) fn export_ordx(&self, filename: &String, chain: Chain, first_height: u32) -> Result {
+  pub(crate) fn export_ordx(
+    &self,
+    filename: &String,
+    chain: Chain,
+    first_inscription_height: u32,
+  ) -> Result {
     let path = Path::new(filename);
     if let Some(parent_dir) = path.parent() {
       if !parent_dir.exists() {
@@ -731,7 +736,7 @@ impl Index {
 
     let mut writer = BufWriter::new(File::create(filename)?);
     let mut need_flush = false;
-    for height in first_height..=blocks_indexed {
+    for height in first_inscription_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
       let inscriptions = inscription_id_list
         .iter()
@@ -834,7 +839,7 @@ impl Index {
     let duration = start_time.elapsed();
     log::info!(
       "export complete block height {blocks_indexed}, block number {} in {} seconds",
-      blocks_indexed - first_height + 1,
+      blocks_indexed - first_inscription_height + 1,
       duration.as_secs()
     );
     Ok(())
