@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'ord'",
+            "name": "ord server",
             "cargo": {
                 "args": [
                     "build",
@@ -50,7 +50,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'ord index export'",
+            "name": "ord index export",
             "cargo": {
                 "args": [
                     "build",
@@ -92,7 +92,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'ord ordx export'",
+            "name": "ord ordx export",
             "cargo": {
                 "args": [
                     "build",
