@@ -720,7 +720,7 @@ impl Index {
     log::info!("exporting ordx data to: {filename}");
 
     let rtx = self.database.begin_read()?;
-    let mut blocks_indexed = rtx
+    let blocks_indexed = rtx
       .open_table(HEIGHT_TO_BLOCK_HEADER)?
       .range(0..)?
       .next_back()
@@ -782,7 +782,6 @@ impl Index {
 
     let mut writer = BufWriter::new(OpenOptions::new().write(true).append(true).open(filename)?);
     let mut need_flush = false;
-    blocks_indexed = 2413343 + 1;
     for height in first_inscription_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
       let inscriptions = inscription_id_list
@@ -884,9 +883,14 @@ impl Index {
     }
 
     let duration = start_time.elapsed();
+
+    let mut block_number = 0;
+    if blocks_indexed >= first_inscription_height {
+      block_number = blocks_indexed - first_inscription_height + 1;
+    }
     log::info!(
-      "export complete block height {blocks_indexed}, block number {} in {} seconds",
-      blocks_indexed - first_inscription_height + 1,
+      "export complete block height {blocks_indexed}, write block number {} in {}s",
+      block_number,
       duration.as_secs()
     );
     Ok(())
