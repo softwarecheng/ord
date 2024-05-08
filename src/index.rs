@@ -772,8 +772,6 @@ impl Index {
         String::new()
       };
 
-      println!("Last line: {}", last_line);
-
       if !last_line.is_empty() {
         let ordx_block_inscriptions: api::OrdxBlockInscriptions = serde_json::from_str(&last_line)?;
         first_inscription_height = ordx_block_inscriptions.height;
@@ -889,7 +887,7 @@ impl Index {
       block_number = blocks_indexed - first_inscription_height + 1;
     }
     log::info!(
-      "export complete block height {blocks_indexed}, write block number {} in {}s",
+      "export complete block height from {first_inscription_height} to {blocks_indexed}, write block number {} in {}s",
       block_number,
       duration.as_secs()
     );
