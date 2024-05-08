@@ -30,7 +30,7 @@ use {
   std::{
     collections::HashMap,
     fs::OpenOptions,
-    io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write},
+    io::{BufReader, BufWriter, Seek, SeekFrom, Write},
     sync::{Mutex, Once},
   },
 };
@@ -720,7 +720,7 @@ impl Index {
     log::info!("exporting ordx data to: {filename}");
 
     let rtx = self.database.begin_read()?;
-    let blocks_indexed = rtx
+    let mut blocks_indexed = rtx
       .open_table(HEIGHT_TO_BLOCK_HEADER)?
       .range(0..)?
       .next_back()
@@ -735,38 +735,54 @@ impl Index {
       now.to_rfc3339()
     );
 
-    let file = OpenOptions::new()
-      .write(true)
-      .append(true)
-      .create(true)
-      .open(filename)?;
-    let metadata = fs::metadata(filename)?;
-    let mut reader = BufReader::new(file);
-    let mut buffer = Vec::new();
+    if Path::new(filename).exists() {
+      let file = OpenOptions::new().read(true).open(filename)?;
+      let metadata = fs::metadata(filename)?;
+      let file_size = metadata.len();
+      let file_size_mb = file_size as f64 / (1024.0 * 1024.0);
+      log::info!("File {} size: {:.2} MB", filename, file_size_mb);
 
-    let last_line = if metadata.len() > 0 {
-      reader.seek(SeekFrom::End(-1))?;
-      while let Ok(bytes_read) = reader.read_until(b'\n', &mut buffer) {
-        if bytes_read == 0 {
-          break;
+      let mut reader = BufReader::new(file);
+
+      let last_line = if file_size > 0 {
+        reader.seek(SeekFrom::End(-1))?;
+        let mut pos = reader.stream_position()?;
+        let mut last_char = [0; 1];
+        reader.read_exact(&mut last_char)?;
+
+        if last_char == [b'\n'] {
+          pos -= 1;
         }
-        if buffer[buffer.len() - bytes_read] == b'\n' {
-          break;
+
+        let mut buffer = Vec::new();
+        while pos > 0 {
+          reader.seek(SeekFrom::Start(pos))?;
+          if reader.read(&mut last_char)? == 0 || last_char == [b'\n'] {
+            break;
+          }
+          buffer.push(last_char[0]);
+          pos -= 1;
         }
-        reader.seek(SeekFrom::Current(-(bytes_read as i64 + 1)))?;
+        if pos == 0 {
+          reader.seek(SeekFrom::Start(0))?;
+        }
+        buffer.reverse();
+        String::from_utf8_lossy(&buffer).trim_end().to_string()
+      } else {
+        String::new()
+      };
+
+      println!("Last line: {}", last_line);
+
+      if !last_line.is_empty() {
+        let ordx_block_inscriptions: api::OrdxBlockInscriptions = serde_json::from_str(&last_line)?;
+        first_inscription_height = ordx_block_inscriptions.height;
       }
-      String::from_utf8_lossy(&buffer).trim_end().to_string()
-    } else {
-      String::new()
-    };
-
-    if !last_line.is_empty() {
-      let ordx_block_inscriptions: api::OrdxBlockInscriptions = serde_json::from_str(&last_line)?;
-      first_inscription_height = ordx_block_inscriptions.height;
     }
 
     let mut writer = BufWriter::new(OpenOptions::new().write(true).append(true).open(filename)?);
     let mut need_flush = false;
+    blocks_indexed = 2413343 + 1;
     for height in first_inscription_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
       let inscriptions = inscription_id_list
@@ -853,7 +869,7 @@ impl Index {
 
       if ordx_block_inscriptions.inscriptions.len() > 0 {
         let json = serde_json::to_string(&ordx_block_inscriptions)?;
-        writeln!(writer, "{}", json)?;
+        write!(writer, "{}\n", json)?;
         log::info!("exported block {height}");
       }
 
