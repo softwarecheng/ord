@@ -316,3 +316,11 @@ To start a new translation:
 
 6. If everything looks good, commit `XX.po` and open a pull request on GitHub.
    Other changed files should be omitted from the pull request.
+
+7. example
+```shell
+   target/release/ord --chain testnet --bitcoin-rpc-url 192.168.1.101:18332 \
+--data-dir ./db --bitcoin-rpc-username jacky --bitcoin-rpc-password 123456 --height-limit 2413343 
+--first-inscription-height 2413343 --index-sats \
+ordx export --filename ./target/testnet-all-inscription-data.ordx
+```
