@@ -29,7 +29,8 @@ use {
   },
   std::{
     collections::HashMap,
-    io::{BufWriter, Write},
+    fs::OpenOptions,
+    io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write},
     sync::{Mutex, Once},
   },
 };
@@ -703,7 +704,7 @@ impl Index {
     &self,
     filename: &String,
     chain: Chain,
-    first_inscription_height: u32,
+    mut first_inscription_height: u32,
   ) -> Result {
     let path = Path::new(filename);
     if let Some(parent_dir) = path.parent() {
@@ -734,7 +735,37 @@ impl Index {
       now.to_rfc3339()
     );
 
-    let mut writer = BufWriter::new(File::create(filename)?);
+    let file = OpenOptions::new()
+      .write(true)
+      .append(true)
+      .create(true)
+      .open(filename)?;
+    let metadata = fs::metadata(filename)?;
+    let mut reader = BufReader::new(file);
+    let mut buffer = Vec::new();
+
+    let last_line = if metadata.len() > 0 {
+      reader.seek(SeekFrom::End(-1))?;
+      while let Ok(bytes_read) = reader.read_until(b'\n', &mut buffer) {
+        if bytes_read == 0 {
+          break;
+        }
+        if buffer[buffer.len() - bytes_read] == b'\n' {
+          break;
+        }
+        reader.seek(SeekFrom::Current(-(bytes_read as i64 + 1)))?;
+      }
+      String::from_utf8_lossy(&buffer).trim_end().to_string()
+    } else {
+      String::new()
+    };
+
+    if !last_line.is_empty() {
+      let ordx_block_inscriptions: api::OrdxBlockInscriptions = serde_json::from_str(&last_line)?;
+      first_inscription_height = ordx_block_inscriptions.height;
+    }
+
+    let mut writer = BufWriter::new(OpenOptions::new().write(true).append(true).open(filename)?);
     let mut need_flush = false;
     for height in first_inscription_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
