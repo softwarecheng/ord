@@ -766,7 +766,7 @@ impl Index {
 
       if !last_line.is_empty() {
         let ordx_block_inscriptions: api::OrdxBlockInscriptions = serde_json::from_str(&last_line)?;
-        first_inscription_height = ordx_block_inscriptions.height;
+        first_inscription_height = ordx_block_inscriptions.height + 1;
       }
     }
 
@@ -777,6 +777,7 @@ impl Index {
 
     let mut writer = BufWriter::new(OpenOptions::new().write(true).append(true).open(filename)?);
     let mut need_flush = false;
+    let mut flush_block_number = 0;
     for height in first_inscription_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
       let inscriptions = inscription_id_list
@@ -864,7 +865,8 @@ impl Index {
       if ordx_block_inscriptions.inscriptions.len() > 0 {
         let json = serde_json::to_string(&ordx_block_inscriptions)?;
         write!(writer, "{}\n", json)?;
-        println!("export block {height}");
+        flush_block_number += 1;
+        println!("export block{height}");
       }
 
       if need_flush && (height % 1000 == 0 || height == blocks_indexed) {
@@ -884,8 +886,9 @@ impl Index {
       block_number = blocks_indexed - first_inscription_height + 1;
     }
     println!(
-      "complete, block height from {first_inscription_height} to {blocks_indexed}, write block number {} in {}s",
-      block_number,
+      "complete! block from {first_inscription_height} to {blocks_indexed}, \
+scan block number {block_number}, write block number {flush_block_number}, \
+total elapsed {}s",
       duration.as_secs()
     );
     Ok(())
