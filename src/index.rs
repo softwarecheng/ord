@@ -771,7 +771,7 @@ impl Index {
     }
 
     println!(
-      "{first_inscription_height} to {blocks_indexed}, export {filename}, size: {:.2}MB",
+      "block {first_inscription_height}->{blocks_indexed}, export {filename}, size: {:.2}MB.",
       file_size as f64 / (1024.0 * 1024.0)
     );
 
@@ -886,9 +886,8 @@ impl Index {
       block_number = blocks_indexed - first_inscription_height + 1;
     }
     println!(
-      "complete! block from {first_inscription_height} to {blocks_indexed}, \
-scan block number {block_number}, write block number {flush_block_number}, \
-total elapsed {}s",
+      "complete! scan block number {block_number}, write block number {flush_block_number}, \
+total elapsed {}s.",
       duration.as_secs()
     );
     Ok(())
