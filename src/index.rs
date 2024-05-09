@@ -775,7 +775,13 @@ impl Index {
       file_size as f64 / (1024.0 * 1024.0)
     );
 
-    let mut writer = BufWriter::new(OpenOptions::new().write(true).append(true).open(filename)?);
+    let mut writer = BufWriter::new(
+      OpenOptions::new()
+        .write(true)
+        .append(true)
+        .create(true)
+        .open(filename)?,
+    );
     let mut need_flush = false;
     let mut flush_block_number = 0;
     for height in first_inscription_height..=blocks_indexed {
