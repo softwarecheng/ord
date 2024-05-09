@@ -19,7 +19,7 @@ use {
     json::{GetBlockHeaderResult, GetBlockStatsResult},
     Client,
   },
-  chrono::{Local, SubsecRound},
+  chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
   redb::{
@@ -706,6 +706,7 @@ impl Index {
     chain: Chain,
     mut first_inscription_height: u32,
   ) -> Result {
+    let start_time = Instant::now();
     let path = Path::new(filename);
     if let Some(parent_dir) = path.parent() {
       if !parent_dir.exists() {
@@ -717,7 +718,6 @@ impl Index {
         path.parent().unwrap().display()
       ));
     }
-    log::info!("exporting ordx data to: {filename}");
 
     let rtx = self.database.begin_read()?;
     let blocks_indexed = rtx
@@ -728,19 +728,11 @@ impl Index {
       .map(|(height, _header)| height.value() + 1)
       .unwrap_or(0);
 
-    let now = Local::now();
-    let start_time = Instant::now();
-    log::info!(
-      "export at block height {blocks_indexed} at {}",
-      now.to_rfc3339()
-    );
-
+    let mut file_size = 0;
     if Path::new(filename).exists() {
       let file = OpenOptions::new().read(true).open(filename)?;
       let metadata = fs::metadata(filename)?;
-      let file_size = metadata.len();
-      let file_size_mb = file_size as f64 / (1024.0 * 1024.0);
-      log::info!("File {} size: {:.2} MB", filename, file_size_mb);
+      file_size = metadata.len();
 
       let mut reader = BufReader::new(file);
 
@@ -777,6 +769,11 @@ impl Index {
         first_inscription_height = ordx_block_inscriptions.height;
       }
     }
+
+    println!(
+      "preparing export block height from {first_inscription_height} to {blocks_indexed}, \nordx file {filename} size: {:.2} MB",
+      file_size as f64 / (1024.0 * 1024.0)
+    );
 
     let mut writer = BufWriter::new(OpenOptions::new().write(true).append(true).open(filename)?);
     let mut need_flush = false;
@@ -867,12 +864,12 @@ impl Index {
       if ordx_block_inscriptions.inscriptions.len() > 0 {
         let json = serde_json::to_string(&ordx_block_inscriptions)?;
         write!(writer, "{}\n", json)?;
-        log::info!("exported block {height}");
+        println!("export block {height}");
       }
 
       if need_flush && (height % 1000 == 0 || height == blocks_indexed) {
         writer.flush()?;
-        log::info!("flushed data in block {height}");
+        println!("flush data in block {height}");
         need_flush = false;
       }
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
@@ -886,8 +883,8 @@ impl Index {
     if blocks_indexed >= first_inscription_height {
       block_number = blocks_indexed - first_inscription_height + 1;
     }
-    log::info!(
-      "export complete block height from {first_inscription_height} to {blocks_indexed}, write block number {} in {}s",
+    println!(
+      "complete, block height from {first_inscription_height} to {blocks_indexed}, write block number {} in {}s",
       block_number,
       duration.as_secs()
     );
