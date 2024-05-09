@@ -771,7 +771,7 @@ impl Index {
     }
 
     println!(
-      "preparing export, block height from {first_inscription_height} to {blocks_indexed}, export file {filename}, size: {:.2}MB",
+      "{first_inscription_height} to {blocks_indexed}, export {filename}, size: {:.2}MB",
       file_size as f64 / (1024.0 * 1024.0)
     );
 
