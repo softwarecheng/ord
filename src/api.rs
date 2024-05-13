@@ -194,6 +194,7 @@ pub struct SatInscriptions {
 // https://github.com/OLProtocol/ordx customization
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrdxBlockInscription {
+  pub genesesaddress: Option<String>,
   pub inscription: Inscription,
   pub output: Output,
 }

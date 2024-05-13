@@ -1836,15 +1836,12 @@ impl Server {
 
               // api output
               let mut outpoint: OutPoint = api_inscription.satpoint.outpoint;
-              if outpoint.txid != inscription_id.txid {
-                outpoint = OutPoint::new(inscription_id.txid, 0);
-              }
               let sat_ranges = index.list(outpoint)?;
               let inscriptions = index.get_inscriptions_on_output(outpoint)?;
               let indexed = index.contains_output(&outpoint)?;
               let runes = index.get_rune_balances_for_outpoint(outpoint)?;
               let spent = index.is_output_spent(outpoint)?;
-              let output = index
+              let mut output = index
                 .get_transaction(outpoint.txid)?
                 .ok_or_not_found(|| format!("output {outpoint}"))?
                 .output
@@ -1862,7 +1859,27 @@ impl Server {
                 spent,
               );
 
+              // get geneses address from address
+              // When the output and inciption id are different, it means that the inscription has been traded.
+              if outpoint.txid != inscription_id.txid {
+                outpoint = OutPoint::new(inscription_id.txid, inscription_id.index);
+              }
+              output = index
+                .get_transaction(outpoint.txid)?
+                .ok_or_not_found(|| format!("output {outpoint}"))?
+                .output
+                .into_iter()
+                .nth(outpoint.vout as usize)
+                .ok_or_not_found(|| format!("output {outpoint}"))?;
+
+              let geneses_address = server_config
+                .chain
+                .address_from_script(&output.script_pubkey)
+                .ok()
+                .map(|address| address.to_string());
+
               Ok(api::OrdxBlockInscription {
+                genesesaddress: geneses_address,
                 inscription: api_inscription,
                 output: api_output,
               })
