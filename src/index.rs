@@ -837,7 +837,7 @@ impl Index {
               .into_iter()
               .nth(outpoint.vout as usize)
               .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-            let mut api_output = api::Output::new(
+            let api_output = api::Output::new(
               chain,
               inscriptions,
               outpoint,
