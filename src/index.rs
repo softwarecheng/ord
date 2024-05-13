@@ -825,11 +825,11 @@ impl Index {
 
             // api output
             let mut outpoint: OutPoint = api_inscription.satpoint.outpoint;
-            let sat_ranges = self.list(outpoint)?;
-            let inscriptions = self.get_inscriptions_on_output(outpoint)?;
-            let indexed = self.contains_output(&outpoint)?;
-            let runes = self.get_rune_balances_for_outpoint(outpoint)?;
-            let spent = self.is_output_spent(outpoint)?;
+            let mut sat_ranges = self.list(outpoint)?;
+            let mut inscriptions = self.get_inscriptions_on_output(outpoint)?;
+            let mut indexed = self.contains_output(&outpoint)?;
+            let mut runes = self.get_rune_balances_for_outpoint(outpoint)?;
+            let mut spent = self.is_output_spent(outpoint)?;
             let mut output = self
               .get_transaction(outpoint.txid)?
               .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
@@ -837,7 +837,7 @@ impl Index {
               .into_iter()
               .nth(outpoint.vout as usize)
               .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-            let api_output = api::Output::new(
+            let mut api_output = api::Output::new(
               chain,
               inscriptions,
               outpoint,
@@ -853,6 +853,12 @@ impl Index {
             if outpoint.txid != inscription_id.txid {
               outpoint = OutPoint::new(inscription_id.txid, inscription_id.index);
             }
+            sat_ranges = self.list(outpoint)?;
+            inscriptions = self.get_inscriptions_on_output(outpoint)?;
+            indexed = self.contains_output(&outpoint)?;
+            runes = self.get_rune_balances_for_outpoint(outpoint)?;
+            spent = self.is_output_spent(outpoint)?;
+
             output = self
               .get_transaction(outpoint.txid)?
               .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
@@ -860,13 +866,19 @@ impl Index {
               .into_iter()
               .nth(outpoint.vout as usize)
               .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-            let geneses_address = chain
-              .address_from_script(&output.script_pubkey)
-              .ok()
-              .map(|address| address.to_string());
+            let api_geneses_output = api::Output::new(
+              chain,
+              inscriptions,
+              outpoint,
+              output,
+              indexed,
+              runes,
+              sat_ranges,
+              spent,
+            );
 
             Ok(api::OrdxBlockInscription {
-              genesesaddress: geneses_address,
+              genesesoutput: api_geneses_output,
               inscription: api_inscription,
               output: api_output,
             })

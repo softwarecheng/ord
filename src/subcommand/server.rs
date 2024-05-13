@@ -1836,11 +1836,11 @@ impl Server {
 
               // api output
               let mut outpoint: OutPoint = api_inscription.satpoint.outpoint;
-              let sat_ranges = index.list(outpoint)?;
-              let inscriptions = index.get_inscriptions_on_output(outpoint)?;
-              let indexed = index.contains_output(&outpoint)?;
-              let runes = index.get_rune_balances_for_outpoint(outpoint)?;
-              let spent = index.is_output_spent(outpoint)?;
+              let mut sat_ranges = index.list(outpoint)?;
+              let mut inscriptions = index.get_inscriptions_on_output(outpoint)?;
+              let mut indexed = index.contains_output(&outpoint)?;
+              let mut runes = index.get_rune_balances_for_outpoint(outpoint)?;
+              let mut spent = index.is_output_spent(outpoint)?;
               let mut output = index
                 .get_transaction(outpoint.txid)?
                 .ok_or_not_found(|| format!("output {outpoint}"))?
@@ -1864,6 +1864,11 @@ impl Server {
               if outpoint.txid != inscription_id.txid {
                 outpoint = OutPoint::new(inscription_id.txid, inscription_id.index);
               }
+              sat_ranges = index.list(outpoint)?;
+              inscriptions = index.get_inscriptions_on_output(outpoint)?;
+              indexed = index.contains_output(&outpoint)?;
+              runes = index.get_rune_balances_for_outpoint(outpoint)?;
+              spent = index.is_output_spent(outpoint)?;
               output = index
                 .get_transaction(outpoint.txid)?
                 .ok_or_not_found(|| format!("output {outpoint}"))?
@@ -1872,14 +1877,19 @@ impl Server {
                 .nth(outpoint.vout as usize)
                 .ok_or_not_found(|| format!("output {outpoint}"))?;
 
-              let geneses_address = server_config
-                .chain
-                .address_from_script(&output.script_pubkey)
-                .ok()
-                .map(|address| address.to_string());
+              let api_geneses_output = api::Output::new(
+                server_config.chain,
+                inscriptions,
+                outpoint,
+                output,
+                indexed,
+                runes,
+                sat_ranges,
+                spent,
+              );
 
               Ok(api::OrdxBlockInscription {
-                genesesaddress: geneses_address,
+                genesesoutput: api_geneses_output,
                 inscription: api_inscription,
                 output: api_output,
               })
