@@ -25,7 +25,7 @@
                 "--bitcoin-rpc-url",
                 "192.168.1.101:18332",
                 "--data-dir",
-                "./db",
+                "/Volumes/backup/data/ord-data/0.16.0",
                 "--bitcoin-rpc-username",
                 "jacky",
                 "--bitcoin-rpc-password",
