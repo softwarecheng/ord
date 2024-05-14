@@ -704,6 +704,7 @@ impl Index {
   pub(crate) fn export_ordx(
     &self,
     filename: &String,
+    cache: u64,
     chain: Chain,
     mut first_inscription_height: u32,
   ) -> Result {
@@ -932,14 +933,14 @@ impl Index {
         write!(writer, "{}\n", json)?;
         flush_block_number += 1;
         println!(
-          "export block: height: {height}, inscription count: {}",
+          "export block-> height: {height}, inscription count: {}",
           ordx_block_inscriptions.inscriptions.len()
         );
       }
 
-      if need_flush && (flush_block_number % 1000 == 0 || height == blocks_indexed) {
+      if need_flush && (flush_block_number % cache == 0 || height == blocks_indexed) {
         writer.flush()?;
-        println!("already flush block number: {flush_block_number}");
+        println!("export block-> already flush block number: {flush_block_number}");
         need_flush = false;
       }
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
