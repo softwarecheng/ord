@@ -1798,7 +1798,8 @@ impl Server {
           true => block.txdata[0].txid().to_string(),
           false => Txid::all_zeros().to_string(),
         };
-        println!("export block: {block_height} {first_block_txid}");
+        log::info!("block-> height: {block_height:?} , firstBlockTxid: {first_block_txid:?}");
+        // println!("block-> height: {block_height:?} firstBlockTxid: {first_block_txid:?}");
         Json(api::OrdxBlockInscriptions {
           height: block_height,
           inscriptions: inscription_id_list

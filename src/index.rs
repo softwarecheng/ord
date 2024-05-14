@@ -794,13 +794,13 @@ impl Index {
         true => block.txdata[0].txid().to_string(),
         false => Txid::all_zeros().to_string(),
       };
-      println!("export block: {height} {first_block_txid}");
+      println!("export block-> height: {height}, firstBlockTxid: {first_block_txid}");
       let inscriptions = inscription_id_list
         .par_iter()
         .map(
           |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
             let query_inscription_id = query::Inscription::Id(*inscription_id);
-            println!("export block: {height} {query_inscription_id}");
+            println!("export block-> height: {height} , inscriptionid: {query_inscription_id} , firstBlockTxid: {first_block_txid}");
             let info = Index::inscription_info(self, query_inscription_id)?.ok_or_else(|| {
               anyhow::Error::msg(format!("inscription {query_inscription_id} not found"))
             })?;
