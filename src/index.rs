@@ -786,11 +786,13 @@ impl Index {
     let mut need_flush = false;
     let mut flush_block_number: u64 = 0;
     for height in first_inscription_height..=blocks_indexed {
+      let block = self
+        .get_block_by_height(height)?
+        .ok_or_else(|| anyhow::Error::msg(format!("block {height}")))?;
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
-
       let first_block_txid = match inscription_id_list.len() > 0 {
-        true => inscription_id_list[0].txid,
-        false => Txid::all_zeros(),
+        true => block.txdata[0].txid().to_string(),
+        false => Txid::all_zeros().to_string(),
       };
       println!("export block: {height} {first_block_txid}");
       let inscriptions = inscription_id_list
@@ -871,7 +873,7 @@ impl Index {
             // When the output and inciption id are different, it means that the inscription has been traded, else this is first block tx
             let mut outpoint = api_inscription.satpoint.outpoint;
             if api_inscription.satpoint.outpoint.txid != inscription_id.txid
-              && api_inscription.satpoint.outpoint.txid != first_block_txid
+              && api_inscription.satpoint.outpoint.txid.to_string() != first_block_txid
             {
               outpoint = OutPoint::new(inscription_id.txid, inscription_id.index)
             }
