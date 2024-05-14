@@ -794,7 +794,7 @@ impl Index {
         true => block.txdata[0].txid().to_string(),
         false => Txid::all_zeros().to_string(),
       };
-      println!("export block-> height: {height}, firstBlockTxid: {first_block_txid}");
+      log::info!("export block-> height: {height}, firstBlockTxid: {first_block_txid}");
       let inscriptions = inscription_id_list
         .par_iter()
         .map(
@@ -875,6 +875,15 @@ impl Index {
             if api_inscription.satpoint.outpoint.txid != inscription_id.txid
               && api_inscription.satpoint.outpoint.txid.to_string() != first_block_txid
             {
+              let mut output_index = inscription_id.index;
+              let transaction = self
+                .get_transaction(inscription_id.txid)?
+                .ok_or_else(|| anyhow::Error::msg(format!("transaction {}", inscription_id.txid)))?;
+              let output_len = transaction.output.len() as u32;
+              // cursed and blessed inscription share the same outpoint, ex: tx 219a5e5458bf0ba686f1c5660cf01652c88dec1b30c13571c43d97a9b11ac653
+              while output_index >= output_len {
+                output_index -= 1;
+              }
               outpoint = OutPoint::new(inscription_id.txid, inscription_id.index)
             }
             let sat_ranges = self.list(outpoint)?;
