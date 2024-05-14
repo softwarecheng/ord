@@ -931,7 +931,10 @@ impl Index {
         let json = serde_json::to_string(&ordx_block_inscriptions)?;
         write!(writer, "{}\n", json)?;
         flush_block_number += 1;
-        println!("export block: {height}");
+        println!(
+          "export block: height: {height}, inscription count: {}",
+          ordx_block_inscriptions.inscriptions.len()
+        );
       }
 
       if need_flush && (flush_block_number % 1000 == 0 || height == blocks_indexed) {
