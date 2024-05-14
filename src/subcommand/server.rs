@@ -1795,7 +1795,7 @@ impl Server {
           .ok_or_not_found(|| format!("block {block_height}"))?;
         let inscription_id_list = index.get_inscriptions_in_block(block_height)?;
         let first_block_txid = match block.txdata.len() > 0 {
-          true => block.txdata[0].ntxid().to_string(),
+          true => block.txdata[0].txid().to_string(),
           false => Txid::all_zeros().to_string(),
         };
         println!("export block: {block_height} {first_block_txid}");
