@@ -785,6 +785,7 @@ impl Index {
     );
     let mut need_flush = false;
     let mut flush_block_number: u64 = 0;
+    let mut flush_inscription_number: u64 = 0;
     for height in first_inscription_height..=blocks_indexed {
       let block = self
         .get_block_by_height(height)?
@@ -931,6 +932,7 @@ impl Index {
         let json = serde_json::to_string(&ordx_block_inscriptions)?;
         write!(writer, "{}\n", json)?;
         flush_block_number += 1;
+        flush_inscription_number += ordx_block_inscriptions.inscriptions.len() as u64;
         println!(
           "export block-> height: {height}, inscription count: {}",
           ordx_block_inscriptions.inscriptions.len()
@@ -939,7 +941,7 @@ impl Index {
 
       if need_flush && (flush_block_number % 2000 == 0 || height == blocks_indexed) {
         writer.flush()?;
-        println!("export block-> already flush block number: {flush_block_number}");
+        println!("export block-> already flush block number: {flush_block_number}, inscription count: {flush_inscription_number}");
         need_flush = false;
       }
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
