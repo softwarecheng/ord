@@ -790,7 +790,7 @@ impl Index {
         .get_block_by_height(height)?
         .ok_or_else(|| anyhow::Error::msg(format!("block {height}")))?;
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
-      let first_block_txid = match inscription_id_list.len() > 0 {
+      let first_block_txid = match block.txdata.len() > 0 {
         true => block.txdata[0].txid().to_string(),
         false => Txid::all_zeros().to_string(),
       };
