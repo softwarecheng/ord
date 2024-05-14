@@ -1835,44 +1835,58 @@ impl Server {
               };
 
               // api output
-              let mut outpoint: OutPoint = api_inscription.satpoint.outpoint;
-              let mut sat_ranges = index.list(outpoint)?;
-              let mut inscriptions = index.get_inscriptions_on_output(outpoint)?;
-              let mut indexed = index.contains_output(&outpoint)?;
-              let mut runes = index.get_rune_balances_for_outpoint(outpoint)?;
-              let mut spent = index.is_output_spent(outpoint)?;
-              print!("query_inscription_id:{}", query_inscription_id);
-              print!("1st:{},{}", outpoint.txid, outpoint.vout);
-              let mut output = index
-                .get_transaction(outpoint.txid)?
-                .ok_or_not_found(|| format!("output {outpoint}"))?
-                .output
-                .into_iter()
-                .nth(outpoint.vout as usize)
-                .ok_or_not_found(|| format!("output {outpoint}"))?;
-              let api_output = api::Output::new(
-                server_config.chain,
-                inscriptions,
-                outpoint,
-                output,
-                indexed,
-                runes,
-                sat_ranges,
-                spent,
-              );
+
+              let unbound_output = OutPoint {
+                txid: "0000000000000000000000000000000000000000000000000000000000000000"
+                  .parse()
+                  .unwrap(),
+                vout: 0,
+              };
+
+              let api_output = match api_inscription.satpoint.outpoint != unbound_output {
+                true => {
+                  let outpoint = api_inscription.satpoint.outpoint;
+                  let sat_ranges = index.list(outpoint)?;
+                  let inscriptions = index.get_inscriptions_on_output(outpoint)?;
+                  let indexed = index.contains_output(&outpoint)?;
+                  let runes = index.get_rune_balances_for_outpoint(outpoint)?;
+                  let spent = index.is_output_spent(outpoint)?;
+                  print!("query_inscription_id:{}", query_inscription_id);
+                  print!("1st:{},{}", outpoint.txid, outpoint.vout);
+                  let output = index
+                    .get_transaction(outpoint.txid)?
+                    .ok_or_not_found(|| format!("output {outpoint}"))?
+                    .output
+                    .into_iter()
+                    .nth(outpoint.vout as usize)
+                    .ok_or_not_found(|| format!("output {outpoint}"))?;
+                  Some(api::Output::new(
+                    server_config.chain,
+                    inscriptions,
+                    outpoint,
+                    output,
+                    indexed,
+                    runes,
+                    sat_ranges,
+                    spent,
+                  ))
+                }
+                false => None,
+              };
 
               // get geneses address from address
               // When the output and inciption id are different, it means that the inscription has been traded.
-              if outpoint.txid != inscription_id.txid {
+              let mut outpoint = api_inscription.satpoint.outpoint;
+              if api_inscription.satpoint.outpoint.txid != inscription_id.txid {
                 outpoint = OutPoint::new(inscription_id.txid, inscription_id.index);
               }
-              sat_ranges = index.list(outpoint)?;
-              inscriptions = index.get_inscriptions_on_output(outpoint)?;
-              indexed = index.contains_output(&outpoint)?;
-              runes = index.get_rune_balances_for_outpoint(outpoint)?;
-              spent = index.is_output_spent(outpoint)?;
+              let sat_ranges = index.list(outpoint)?;
+              let inscriptions = index.get_inscriptions_on_output(outpoint)?;
+              let indexed = index.contains_output(&outpoint)?;
+              let runes = index.get_rune_balances_for_outpoint(outpoint)?;
+              let spent = index.is_output_spent(outpoint)?;
               print!("2nd:{},{}", outpoint.txid, outpoint.vout);
-              output = index
+              let output = index
                 .get_transaction(outpoint.txid)?
                 .ok_or_not_found(|| format!("output {outpoint}"))?
                 .output
@@ -1894,7 +1908,7 @@ impl Server {
               Ok(api::OrdxBlockInscription {
                 genesesoutput: api_geneses_output,
                 inscription: api_inscription,
-                output: api_output,
+                output: api_output.unwrap_or_default(),
               })
             })
             .collect::<Result<Vec<api::OrdxBlockInscription>, ServerError>>()?,
