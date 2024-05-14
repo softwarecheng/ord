@@ -25,6 +25,7 @@ use {
   },
   axum_server::Handle,
   brotli::Decompressor,
+  rayon::prelude::*,
   rust_embed::RustEmbed,
   rustls_acme::{
     acme::{LETS_ENCRYPT_PRODUCTION_DIRECTORY, LETS_ENCRYPT_STAGING_DIRECTORY},
@@ -1798,7 +1799,7 @@ impl Server {
         Json(api::OrdxBlockInscriptions {
           height: block_height,
           inscriptions: inscription_id_list
-            .iter()
+            .par_iter()
             .map(|inscription_id| {
               let query_inscription_id = query::Inscription::Id(*inscription_id);
               let info = Index::inscription_info(&index, query_inscription_id)?
