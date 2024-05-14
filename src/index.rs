@@ -787,6 +787,12 @@ impl Index {
     let mut flush_block_number: u64 = 0;
     for height in first_inscription_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
+
+      let first_block_txid = match inscription_id_list.len() > 0 {
+        true => inscription_id_list[0].txid,
+        false => Txid::all_zeros(),
+      };
+      println!("export block: {height} {first_block_txid}");
       let inscriptions = inscription_id_list
         .par_iter()
         .map(
@@ -862,10 +868,12 @@ impl Index {
             };
 
             // get geneses address from address
-            // When the output and inciption id are different, it means that the inscription has been traded.
+            // When the output and inciption id are different, it means that the inscription has been traded, else this is first block tx
             let mut outpoint = api_inscription.satpoint.outpoint;
-            if api_inscription.satpoint.outpoint.txid != inscription_id.txid {
-              outpoint = OutPoint::new(inscription_id.txid, inscription_id.index);
+            if api_inscription.satpoint.outpoint.txid != inscription_id.txid
+              && api_inscription.satpoint.outpoint.txid != first_block_txid
+            {
+              outpoint = OutPoint::new(inscription_id.txid, inscription_id.index)
             }
             let sat_ranges = self.list(outpoint)?;
             let inscriptions = self.get_inscriptions_on_output(outpoint)?;
