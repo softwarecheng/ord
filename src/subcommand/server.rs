@@ -1835,14 +1835,12 @@ impl Server {
               };
 
               // api output
-
               let unbound_output = OutPoint {
                 txid: "0000000000000000000000000000000000000000000000000000000000000000"
                   .parse()
                   .unwrap(),
                 vout: 0,
               };
-
               let api_output = match api_inscription.satpoint.outpoint != unbound_output {
                 true => {
                   let outpoint = api_inscription.satpoint.outpoint;
@@ -1851,8 +1849,6 @@ impl Server {
                   let indexed = index.contains_output(&outpoint)?;
                   let runes = index.get_rune_balances_for_outpoint(outpoint)?;
                   let spent = index.is_output_spent(outpoint)?;
-                  print!("query_inscription_id:{}", query_inscription_id);
-                  print!("1st:{},{}", outpoint.txid, outpoint.vout);
                   let output = index
                     .get_transaction(outpoint.txid)?
                     .ok_or_not_found(|| format!("output {outpoint}"))?
@@ -1885,7 +1881,6 @@ impl Server {
               let indexed = index.contains_output(&outpoint)?;
               let runes = index.get_rune_balances_for_outpoint(outpoint)?;
               let spent = index.is_output_spent(outpoint)?;
-              print!("2nd:{},{}", outpoint.txid, outpoint.vout);
               let output = index
                 .get_transaction(outpoint.txid)?
                 .ok_or_not_found(|| format!("output {outpoint}"))?

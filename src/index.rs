@@ -825,42 +825,53 @@ impl Index {
             };
 
             // api output
-            let mut outpoint: OutPoint = api_inscription.satpoint.outpoint;
-            let mut sat_ranges = self.list(outpoint)?;
-            let mut inscriptions = self.get_inscriptions_on_output(outpoint)?;
-            let mut indexed = self.contains_output(&outpoint)?;
-            let mut runes = self.get_rune_balances_for_outpoint(outpoint)?;
-            let mut spent = self.is_output_spent(outpoint)?;
-            let mut output = self
-              .get_transaction(outpoint.txid)?
-              .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
-              .output
-              .into_iter()
-              .nth(outpoint.vout as usize)
-              .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-            let api_output = api::Output::new(
-              chain,
-              inscriptions,
-              outpoint,
-              output,
-              indexed,
-              runes,
-              sat_ranges,
-              spent,
-            );
+            let unbound_output = OutPoint {
+              txid: "0000000000000000000000000000000000000000000000000000000000000000"
+                .parse()
+                .unwrap(),
+              vout: 0,
+            };
+            let api_output = match api_inscription.satpoint.outpoint != unbound_output {
+              true => {
+                let outpoint = api_inscription.satpoint.outpoint;
+                let sat_ranges = self.list(outpoint)?;
+                let inscriptions = self.get_inscriptions_on_output(outpoint)?;
+                let indexed = self.contains_output(&outpoint)?;
+                let runes = self.get_rune_balances_for_outpoint(outpoint)?;
+                let spent = self.is_output_spent(outpoint)?;
+                let output = self
+                  .get_transaction(outpoint.txid)?
+                  .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
+                  .output
+                  .into_iter()
+                  .nth(outpoint.vout as usize)
+                  .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
+                Some(api::Output::new(
+                  chain,
+                  inscriptions,
+                  outpoint,
+                  output,
+                  indexed,
+                  runes,
+                  sat_ranges,
+                  spent,
+                ))
+              }
+              false => None,
+            };
 
             // get geneses address from address
             // When the output and inciption id are different, it means that the inscription has been traded.
-            if outpoint.txid != inscription_id.txid {
+            let mut outpoint = api_inscription.satpoint.outpoint;
+            if api_inscription.satpoint.outpoint.txid != inscription_id.txid {
               outpoint = OutPoint::new(inscription_id.txid, inscription_id.index);
             }
-            sat_ranges = self.list(outpoint)?;
-            inscriptions = self.get_inscriptions_on_output(outpoint)?;
-            indexed = self.contains_output(&outpoint)?;
-            runes = self.get_rune_balances_for_outpoint(outpoint)?;
-            spent = self.is_output_spent(outpoint)?;
-
-            output = self
+            let sat_ranges = self.list(outpoint)?;
+            let inscriptions = self.get_inscriptions_on_output(outpoint)?;
+            let indexed = self.contains_output(&outpoint)?;
+            let runes = self.get_rune_balances_for_outpoint(outpoint)?;
+            let spent = self.is_output_spent(outpoint)?;
+            let output = self
               .get_transaction(outpoint.txid)?
               .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
               .output
@@ -881,7 +892,7 @@ impl Index {
             Ok(api::OrdxBlockInscription {
               genesesoutput: api_geneses_output,
               inscription: api_inscription,
-              output: api_output,
+              output: api_output.unwrap_or_default(),
             })
           },
         )
