@@ -704,7 +704,6 @@ impl Index {
   pub(crate) fn export_ordx(
     &self,
     filename: &String,
-    cache: u64,
     chain: Chain,
     mut first_inscription_height: u32,
   ) -> Result {
@@ -938,7 +937,7 @@ impl Index {
         );
       }
 
-      if need_flush && (flush_block_number % cache == 0 || height == blocks_indexed) {
+      if need_flush && (flush_block_number % 2000 == 0 || height == blocks_indexed) {
         writer.flush()?;
         println!("export block-> already flush block number: {flush_block_number}");
         need_flush = false;
