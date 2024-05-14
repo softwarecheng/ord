@@ -1790,10 +1790,13 @@ impl Server {
   ) -> ServerResult<Response> {
     Ok(
       {
+        let block = index
+          .get_block_by_height(block_height)?
+          .ok_or_not_found(|| format!("block {block_height}"))?;
         let inscription_id_list = index.get_inscriptions_in_block(block_height)?;
-        let first_block_txid = match inscription_id_list.len() > 0 {
-          true => inscription_id_list[0].txid,
-          false => Txid::all_zeros(),
+        let first_block_txid = match block.txdata.len() > 0 {
+          true => block.txdata[0].ntxid().to_string(),
+          false => Txid::all_zeros().to_string(),
         };
         println!("export block: {block_height} {first_block_txid}");
         Json(api::OrdxBlockInscriptions {
@@ -1879,7 +1882,7 @@ impl Server {
               // When the output and inciption id are different, it means that the inscription has been traded, else this is first block tx
               let mut outpoint = api_inscription.satpoint.outpoint;
               if api_inscription.satpoint.outpoint.txid != inscription_id.txid
-                && api_inscription.satpoint.outpoint.txid != first_block_txid
+                && api_inscription.satpoint.outpoint.txid.to_string() != first_block_txid
               {
                 outpoint = OutPoint::new(inscription_id.txid, inscription_id.index)
               }
