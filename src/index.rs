@@ -791,6 +791,7 @@ impl Index {
         .map(
           |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
             let query_inscription_id = query::Inscription::Id(*inscription_id);
+            println!("export block: {height} {query_inscription_id}");
             let info = Index::inscription_info(self, query_inscription_id)?.ok_or_else(|| {
               anyhow::Error::msg(format!("inscription {query_inscription_id} not found"))
             })?;
