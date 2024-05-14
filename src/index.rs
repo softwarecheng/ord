@@ -880,6 +880,7 @@ impl Index {
                 .get_transaction(inscription_id.txid)?
                 .ok_or_else(|| anyhow::Error::msg(format!("transaction {}", inscription_id.txid)))?;
               let output_len = transaction.output.len() as u32;
+              println!("export block-> inscription_id.txid: {} , output_index: {output_index} , output_len: {output_len}",inscription_id.txid);
               // cursed and blessed inscription share the same outpoint, ex: tx 219a5e5458bf0ba686f1c5660cf01652c88dec1b30c13571c43d97a9b11ac653
               while output_index >= output_len {
                 output_index -= 1;
