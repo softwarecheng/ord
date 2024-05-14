@@ -18,6 +18,7 @@ maintainer = "The Ord Maintainers"
 members = [".", "crates/*"]
 
 [dependencies]
+rayon = "1.10.0"
 anyhow = { version = "1.0.56", features = ["backtrace"] }
 async-trait = "0.1.72"
 axum = { version = "0.6.1", features = ["http2"] }
@@ -66,8 +67,14 @@ sysinfo = "0.30.3"
 tempfile = "3.2.0"
 tokio = { version = "1.17.0", features = ["rt-multi-thread"] }
 tokio-stream = "0.1.9"
-tokio-util = {version = "0.7.3", features = ["compat"] }
-tower-http = { version = "0.4.0", features = ["auth", "compression-br", "compression-gzip", "cors", "set-header"] }
+tokio-util = { version = "0.7.3", features = ["compat"] }
+tower-http = { version = "0.4.0", features = [
+    "auth",
+    "compression-br",
+    "compression-gzip",
+    "cors",
+    "set-header",
+] }
 
 [dev-dependencies]
 criterion = "0.5.1"

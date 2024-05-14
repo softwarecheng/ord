@@ -22,6 +22,7 @@ use {
   chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
+  rayon::prelude::*,
   redb::{
     Database, DatabaseError, MultimapTable, MultimapTableDefinition, MultimapTableHandle,
     ReadOnlyTable, ReadableMultimapTable, ReadableTable, RepairSession, StorageError, Table,
@@ -783,11 +784,11 @@ impl Index {
         .open(filename)?,
     );
     let mut need_flush = false;
-    let mut flush_block_number = 0;
+    let mut flush_block_number: u64 = 0;
     for height in first_inscription_height..=blocks_indexed {
       let inscription_id_list = self.get_inscriptions_in_block(height)?;
       let inscriptions = inscription_id_list
-        .iter()
+        .par_iter()
         .map(
           |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
             let query_inscription_id = query::Inscription::Id(*inscription_id);
@@ -914,7 +915,7 @@ impl Index {
         println!("export block: {height}");
       }
 
-      if need_flush && (height % 1000 == 0 || height == blocks_indexed) {
+      if need_flush && (flush_block_number % 1000 == 0 || height == blocks_indexed) {
         writer.flush()?;
         println!("flush data in block {height}");
         need_flush = false;
@@ -924,8 +925,8 @@ impl Index {
       }
     }
 
+    writer.flush()?;
     let duration = start_time.elapsed();
-
     let mut block_number = 0;
     if blocks_indexed >= first_inscription_height {
       block_number = blocks_indexed - first_inscription_height + 1;
