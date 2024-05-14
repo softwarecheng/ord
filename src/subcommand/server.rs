@@ -1841,6 +1841,7 @@ impl Server {
               let mut indexed = index.contains_output(&outpoint)?;
               let mut runes = index.get_rune_balances_for_outpoint(outpoint)?;
               let mut spent = index.is_output_spent(outpoint)?;
+              print!("query_inscription_id:{}", query_inscription_id);
               print!("1st:{},{}", outpoint.txid, outpoint.vout);
               let mut output = index
                 .get_transaction(outpoint.txid)?
