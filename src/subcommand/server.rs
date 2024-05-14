@@ -1841,6 +1841,7 @@ impl Server {
               let mut indexed = index.contains_output(&outpoint)?;
               let mut runes = index.get_rune_balances_for_outpoint(outpoint)?;
               let mut spent = index.is_output_spent(outpoint)?;
+              print!("1st:{},{}", outpoint.txid, outpoint.vout);
               let mut output = index
                 .get_transaction(outpoint.txid)?
                 .ok_or_not_found(|| format!("output {outpoint}"))?
@@ -1869,6 +1870,7 @@ impl Server {
               indexed = index.contains_output(&outpoint)?;
               runes = index.get_rune_balances_for_outpoint(outpoint)?;
               spent = index.is_output_spent(outpoint)?;
+              print!("2nd:{},{}", outpoint.txid, outpoint.vout);
               output = index
                 .get_transaction(outpoint.txid)?
                 .ok_or_not_found(|| format!("output {outpoint}"))?
