@@ -181,7 +181,7 @@ impl Output {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct OrdxOutput {
-  pub address: String,
+  pub address: Option<String>,
   pub transaction: String,
   pub value: u64,
 }
@@ -192,8 +192,7 @@ impl OrdxOutput {
       address: chain
         .address_from_script(&output.script_pubkey)
         .ok()
-        .map(|address| address.to_string())
-        .unwrap_or_default(),
+        .map(|address| address.to_string()),
       transaction: outpoint.txid.to_string(),
       value: output.value,
     }
