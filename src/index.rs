@@ -22,7 +22,6 @@ use {
   chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
-  rayon::prelude::*,
   redb::{
     Database, DatabaseError, MultimapTable, MultimapTableDefinition, MultimapTableHandle,
     ReadOnlyTable, ReadableMultimapTable, ReadableTable, RepairSession, StorageError, Table,
@@ -32,7 +31,7 @@ use {
     collections::HashMap,
     fs::OpenOptions,
     io::{BufReader, BufWriter, Seek, SeekFrom, Write},
-    sync::{Mutex, Once, RwLock},
+    sync::{Mutex, Once},
   },
 };
 
@@ -701,264 +700,6 @@ impl Index {
     Ok(())
   }
 
-  pub(crate) fn export_ordx1(
-    &self,
-    filename: &String,
-    chain: Chain,
-    mut first_inscription_height: u32,
-  ) -> Result {
-    let start_time = Instant::now();
-    let path = Path::new(filename);
-    if let Some(parent_dir) = path.parent() {
-      if !parent_dir.exists() {
-        fs::create_dir_all(parent_dir)?;
-      }
-    } else {
-      return Err(anyhow!(
-        "ordx data directory is not a valid path: {}",
-        path.parent().unwrap().display()
-      ));
-    }
-
-    let rtx = self.database.begin_read()?;
-    let blocks_indexed = rtx
-      .open_table(HEIGHT_TO_BLOCK_HEADER)?
-      .range(0..)?
-      .next_back()
-      .transpose()?
-      .map(|(height, _header)| height.value() + 1)
-      .unwrap_or(0);
-
-    let mut file_size = 0;
-    if Path::new(filename).exists() {
-      let file = OpenOptions::new().read(true).open(filename)?;
-      let metadata = fs::metadata(filename)?;
-      file_size = metadata.len();
-
-      let mut reader = BufReader::new(file);
-
-      let last_line = if file_size > 0 {
-        reader.seek(SeekFrom::End(-1))?;
-        let mut pos = reader.stream_position()?;
-        let mut last_char = [0; 1];
-        reader.read_exact(&mut last_char)?;
-
-        if last_char == [b'\n'] {
-          pos -= 1;
-        }
-
-        let mut buffer = Vec::new();
-        while pos > 0 {
-          reader.seek(SeekFrom::Start(pos))?;
-          if reader.read(&mut last_char)? == 0 || last_char == [b'\n'] {
-            break;
-          }
-          buffer.push(last_char[0]);
-          pos -= 1;
-        }
-        if pos == 0 {
-          reader.seek(SeekFrom::Start(0))?;
-        }
-        buffer.reverse();
-        String::from_utf8_lossy(&buffer).trim_end().to_string()
-      } else {
-        String::new()
-      };
-
-      if !last_line.is_empty() {
-        let ordx_block_inscriptions: api::OrdxBlockInscriptions = serde_json::from_str(&last_line)?;
-        first_inscription_height = ordx_block_inscriptions.height + 1;
-      }
-    }
-
-    println!(
-      "block {first_inscription_height}->{blocks_indexed}, export {filename}, size: {:.2}MB.",
-      file_size as f64 / (1024.0 * 1024.0)
-    );
-
-    let writer = Arc::new(Mutex::new(BufWriter::new(
-      OpenOptions::new()
-        .write(true)
-        .append(true)
-        .create(true)
-        .open(filename)?,
-    )));
-    let writer_clone = writer.clone();
-
-    let need_flush = Arc::new(RwLock::new(false));
-    let shared_need_flush = need_flush.clone();
-
-    let flush_block_number = Arc::new(RwLock::new(0));
-    let shared_flush_block_number = flush_block_number.clone();
-
-    let flush_inscription_number = Arc::new(RwLock::new(0));
-    let shared_flush_inscription_number = flush_inscription_number.clone();
-
-    (first_inscription_height..=blocks_indexed)
-      .into_par_iter()
-      .try_for_each(move |height| -> Result<(), anyhow::Error> {
-        let block = self
-          .get_block_by_height(height)?
-          .ok_or_else(|| anyhow::Error::msg(format!("block {height}")))?;
-        let inscription_id_list = self.get_inscriptions_in_block(height)?;
-        let first_block_txid = match block.txdata.len() > 0 {
-          true => block.txdata[0].txid().to_string(),
-          false => Txid::all_zeros().to_string(),
-        };
-
-        let inscriptions = inscription_id_list
-          .par_iter()
-          .map(
-            |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
-              let query_inscription_id = query::Inscription::Id(*inscription_id);
-              let info = Index::inscription_info(self, query_inscription_id)?.ok_or_else(|| {
-                anyhow::Error::msg(format!("inscription {query_inscription_id} not found"))
-              })?;
-
-              let ordx_inscription = api::OrdxInscription {
-                address: info
-                  .output
-                  .as_ref()
-                  .and_then(|o| chain.address_from_script(&o.script_pubkey).ok())
-                  .map(|address| address.to_string()),
-                children: info.children,
-                content_length: info.inscription.content_length(),
-                content_type: info.inscription.content_type().map(|s| s.to_string()),
-                height: info.entry.height,
-                id: info.entry.id,
-                next: info.next,
-                number: info.entry.inscription_number,
-                parent: info.parent,
-                previous: info.previous,
-                sat: info.entry.sat,
-                satpoint: info.satpoint,
-                timestamp: timestamp(info.entry.timestamp).timestamp(),
-                value: info.output.as_ref().map(|o| o.value),
-              };
-
-              // api output
-              let unbound_output = OutPoint {
-                txid: "0000000000000000000000000000000000000000000000000000000000000000"
-                  .parse()
-                  .unwrap(),
-                vout: 0,
-              };
-              let ordx_output = match ordx_inscription.satpoint.outpoint != unbound_output {
-                true => {
-                  let outpoint = ordx_inscription.satpoint.outpoint;
-                  let output = self
-                    .get_transaction(outpoint.txid)?
-                    .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
-                    .output
-                    .into_iter()
-                    .nth(outpoint.vout as usize)
-                    .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-                  Some(api::OrdxOutput::new(chain, outpoint, output))
-                }
-                false => None,
-              };
-
-              // get geneses address from address
-              // When the output and inciption id are different, it means that the inscription has been traded, else this is first block tx
-              let mut outpoint = ordx_inscription.satpoint.outpoint;
-              if ordx_inscription.satpoint.outpoint.txid != inscription_id.txid
-                && ordx_inscription.satpoint.outpoint.txid.to_string() != first_block_txid
-              {
-                let mut output_index = inscription_id.index;
-                let transaction = self.get_transaction(inscription_id.txid)?.ok_or_else(|| {
-                  anyhow::Error::msg(format!("transaction {}", inscription_id.txid))
-                })?;
-                let output_len = transaction.output.len() as u32;
-                // cursed and blessed inscription share the same outpoint, ex: tx 219a5e5458bf0ba686f1c5660cf01652c88dec1b30c13571c43d97a9b11ac653
-                while output_index >= output_len {
-                  output_index -= 1;
-                }
-                outpoint = OutPoint::new(inscription_id.txid, output_index)
-              }
-
-              let output = self
-                .get_transaction(outpoint.txid)?
-                .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
-                .output
-                .into_iter()
-                .nth(outpoint.vout as usize)
-                .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-              let geneses_address = chain
-                .address_from_script(&output.script_pubkey)
-                .ok()
-                .map(|address| address.to_string())
-                .ok_or_else(|| {
-                  anyhow::Error::msg(format!("output.script_pubkey: {}", output.script_pubkey))
-                })?;
-              Ok(api::OrdxBlockInscription {
-                genesesaddress: geneses_address,
-                inscription: ordx_inscription,
-                output: ordx_output.unwrap_or_default(),
-              })
-            },
-          )
-          .collect::<Result<Vec<api::OrdxBlockInscription>, Error>>()?;
-
-        let ordx_block_inscriptions = api::OrdxBlockInscriptions {
-          height,
-          inscriptions,
-        };
-
-        if !*shared_need_flush.read().unwrap() {
-          *shared_need_flush.write().unwrap() = ordx_block_inscriptions.inscriptions.len() > 0;
-        }
-
-        let flush_block_number_clone = shared_flush_block_number.clone();
-        let mut writer = writer.lock().unwrap();
-
-        if ordx_block_inscriptions.inscriptions.len() > 0 {
-          let json = serde_json::to_string(&ordx_block_inscriptions)?;
-          write!(writer, "{}\n", json)?;
-          if let Ok(mut num) = flush_block_number_clone.write() {
-            *num += 1;
-          }
-          // *shared_flush_block_number.write().unwrap() += 1;
-          *shared_flush_inscription_number.write().unwrap() +=
-            ordx_block_inscriptions.inscriptions.len() as u64;
-          println!(
-            "export block-> height: {height}, inscription count: {}",
-            ordx_block_inscriptions.inscriptions.len()
-          );
-        }
-
-        if *shared_need_flush.read().unwrap()
-          && (*shared_flush_inscription_number.read().unwrap() % 2000 == 0
-            || *shared_flush_block_number.read().unwrap() == blocks_indexed)
-        {
-          writer.flush()?;
-          println!(
-            "export block-> already flush block number: {}, inscription count: {}",
-            *shared_flush_block_number.read().unwrap(),
-            *shared_flush_block_number.read().unwrap()
-          );
-          *shared_need_flush.write().unwrap() = false;
-        }
-        if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
-          return Ok(());
-        }
-        Ok(())
-      });
-
-    writer_clone.lock().unwrap().flush()?;
-    let duration = start_time.elapsed();
-    let mut block_number = 0;
-    if blocks_indexed >= first_inscription_height {
-      block_number = blocks_indexed - first_inscription_height + 1;
-    }
-    println!(
-      "complete! scan block number {block_number}, write block number {}, \
-total elapsed {}s.",
-      *flush_block_number.read().unwrap(),
-      duration.as_secs()
-    );
-    Ok(())
-  }
-
   pub(crate) fn export_ordx(
     &self,
     filename: &String,
@@ -1057,7 +798,7 @@ total elapsed {}s.",
       };
 
       let inscriptions = inscription_id_list
-        .par_iter()
+        .iter()
         .map(
           |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
             let query_inscription_id = query::Inscription::Id(*inscription_id);
