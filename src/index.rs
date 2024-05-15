@@ -944,7 +944,7 @@ impl Index {
         write!(writer, "{}\n", json)?;
         flush_block_number += 1;
         flush_inscription_number += ordx_block_inscriptions.inscriptions.len() as u64;
-        total_inscription_number += flush_inscription_number;
+
         println!(
           "export block-> height: {height}, inscription count: {}",
           ordx_block_inscriptions.inscriptions.len()
@@ -953,9 +953,10 @@ impl Index {
 
       if need_flush && (flush_inscription_number % cache == 0 || height == blocks_indexed) {
         writer.flush()?;
-        println!("export block-> already flush block number: {flush_block_number}, flush inscription count: {total_inscription_number}");
         need_flush = false;
+        total_inscription_number += flush_inscription_number;
         flush_inscription_number = 0;
+        println!("export block-> already flush block number: {flush_block_number}, flush inscription count: {total_inscription_number}");
       }
       if SHUTTING_DOWN.load(atomic::Ordering::Relaxed) {
         break;
