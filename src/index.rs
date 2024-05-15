@@ -879,11 +879,11 @@ impl Index {
               }
               outpoint = OutPoint::new(inscription_id.txid, output_index)
             }
-            let sat_ranges = self.list(outpoint)?;
-            let inscriptions = self.get_inscriptions_on_output(outpoint)?;
-            let indexed = self.contains_output(&outpoint)?;
-            let runes = self.get_rune_balances_for_outpoint(outpoint)?;
-            let spent = self.is_output_spent(outpoint)?;
+            // let sat_ranges = self.list(outpoint)?;
+            // let inscriptions = self.get_inscriptions_on_output(outpoint)?;
+            // let indexed = self.contains_output(&outpoint)?;
+            // let runes = self.get_rune_balances_for_outpoint(outpoint)?;
+            // let spent = self.is_output_spent(outpoint)?;
             let output = self
               .get_transaction(outpoint.txid)?
               .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
@@ -891,26 +891,37 @@ impl Index {
               .into_iter()
               .nth(outpoint.vout as usize)
               .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-            let api_geneses_output = api::Output::new(
-              chain,
-              inscriptions,
-              outpoint,
-              output,
-              indexed,
-              runes,
-              sat_ranges,
-              spent,
-            );
-            // let geneses_address = chain
-            //   .address_from_script(&output.script_pubkey)
-            //   .ok()
-            //   .map(|address| address.to_string())
-            //   .ok_or_else(|| {
-            //     anyhow::Error::msg(format!("output.script_pubkey: {}", output.script_pubkey))
-            //   })?;
+            // let cloned_output = output.clone();
+            // let api_geneses_output = api::Output::new(
+            //   chain,
+            //   inscriptions,
+            //   outpoint,
+            //   output,
+            //   indexed,
+            //   runes,
+            //   sat_ranges,
+            //   spent,
+            // );
+            let geneses_address = chain
+              .address_from_script(&output.script_pubkey)
+              .map_or_else(
+                |_| {
+                  println!(
+                    "no find address-> outpoint: {}, output.script_pubkey: {}",
+                    outpoint, output.script_pubkey
+                  );
+                  "".to_string()
+                },
+                |address| address.to_string(),
+              );
+            // .ok()
+            // .map(|address| address.to_string())
+            // .ok_or_else(|| {
+            //   anyhow::Error::msg(format!("output.script_pubkey: {}", output.script_pubkey))
+            // })?;
 
             Ok(api::OrdxBlockInscription {
-              genesesaddress: api_geneses_output.address.unwrap_or_default(),
+              genesesaddress: geneses_address,
               inscription: api_inscription,
               output: ordx_output.unwrap_or_default(),
             })

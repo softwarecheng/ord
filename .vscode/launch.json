@@ -124,6 +124,8 @@
                 "export",
                 "--filename",
                 "./target/testnet-all-inscription-data.ordx",
+                "--cache",
+                "3000"
             ],
             "cwd": "${workspaceFolder}",
             "env": {
