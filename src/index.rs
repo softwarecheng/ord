@@ -22,6 +22,7 @@ use {
   chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
+  rayon::prelude::*,
   redb::{
     Database, DatabaseError, MultimapTable, MultimapTableDefinition, MultimapTableHandle,
     ReadOnlyTable, ReadableMultimapTable, ReadableTable, RepairSession, StorageError, Table,
@@ -798,7 +799,7 @@ impl Index {
       };
 
       let inscriptions = inscription_id_list
-        .iter()
+        .par_iter()
         .map(
           |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
             let query_inscription_id = query::Inscription::Id(*inscription_id);
