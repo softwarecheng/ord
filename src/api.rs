@@ -97,6 +97,24 @@ pub struct Inscription {
   pub value: Option<u64>,
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+pub struct OrdxInscription {
+  pub address: Option<String>,
+  pub children: Vec<InscriptionId>,
+  pub content_length: Option<usize>,
+  pub content_type: Option<String>,
+  pub height: u32,
+  pub id: InscriptionId,
+  pub next: Option<InscriptionId>,
+  pub number: i32,
+  pub parent: Option<InscriptionId>,
+  pub previous: Option<InscriptionId>,
+  pub sat: Option<ordinals::Sat>,
+  pub satpoint: SatPoint,
+  pub timestamp: i64,
+  pub value: Option<u64>,
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct InscriptionRecursive {
   pub charms: Vec<String>,
@@ -161,6 +179,27 @@ impl Output {
   }
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
+pub struct OrdxOutput {
+  pub address: String,
+  pub transaction: String,
+  pub value: u64,
+}
+
+impl OrdxOutput {
+  pub fn new(chain: Chain, outpoint: OutPoint, output: TxOut) -> Self {
+    Self {
+      address: chain
+        .address_from_script(&output.script_pubkey)
+        .ok()
+        .map(|address| address.to_string())
+        .unwrap_or_default(),
+      transaction: outpoint.txid.to_string(),
+      value: output.value,
+    }
+  }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Sat {
   pub number: u64,
@@ -194,9 +233,9 @@ pub struct SatInscriptions {
 // https://github.com/OLProtocol/ordx customization
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct OrdxBlockInscription {
-  pub genesesoutput: Output,
-  pub inscription: Inscription,
-  pub output: Output,
+  pub genesesaddress: String,
+  pub inscription: OrdxInscription,
+  pub output: OrdxOutput,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
