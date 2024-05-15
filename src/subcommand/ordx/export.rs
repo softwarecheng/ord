@@ -4,6 +4,8 @@ use super::*;
 pub(crate) struct Export {
   #[arg(long, help = "export filename path")]
   filename: String,
+  #[arg(long, help = "cache for inscriptions")]
+  cache: u64,
 }
 
 impl Export {
@@ -13,6 +15,7 @@ impl Export {
     index.update()?;
     index.export_ordx(
       &self.filename,
+      self.cache,
       settings.chain(),
       settings.first_inscription_height(),
     )?;
