@@ -1844,12 +1844,12 @@ impl Server {
               };
 
               // api output
-              let unbound_output = OutPoint {
-                txid: "0000000000000000000000000000000000000000000000000000000000000000"
-                  .parse()
-                  .unwrap(),
-                vout: 0,
-              };
+              // let unbound_output = OutPoint {
+              //   txid: "0000000000000000000000000000000000000000000000000000000000000000"
+              //     .parse()
+              //     .unwrap(),
+              //   vout: 0,
+              // };
               // let ordx_output = match ordx_inscription.satpoint.outpoint != unbound_output {
               //   true => {
               //     let outpoint = ordx_inscription.satpoint.outpoint;
