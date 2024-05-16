@@ -103,6 +103,7 @@ pub struct OrdxInscription {
   pub children: Vec<InscriptionId>,
   pub content_length: Option<usize>,
   pub content_type: Option<String>,
+  pub fee: u64,
   pub height: u32,
   pub id: InscriptionId,
   pub next: Option<InscriptionId>,
@@ -241,4 +242,10 @@ pub struct OrdxBlockInscription {
 pub struct OrdxBlockInscriptions {
   pub height: u32,
   pub inscriptions: Vec<OrdxBlockInscription>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct OrdxBlockTxOutputInscriptions {
+  pub height: u32,
+  pub inscriptions: Vec<OrdxInscription>,
 }

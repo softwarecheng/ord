@@ -257,6 +257,7 @@ impl Server {
         .route("/tx/:txid", get(Self::transaction))
         //https://github.com/OLProtocol/ordx customization 
         .route("/ordx/block/inscriptions/:height", get(Self::ordx_block_inscriptions)) 
+        .route("/ordx/block/tx/outputs/inscriptions/:height", get(Self::ordx_block_tx_outputs_inscriptions))
         .layer(Extension(index))
         .layer(Extension(server_config.clone()))
         .layer(Extension(settings.clone()))
@@ -1829,7 +1830,7 @@ impl Server {
                 children: info.children,
                 content_length: info.inscription.content_length(),
                 content_type: info.inscription.content_type().map(|s| s.to_string()),
-                // fee: info.entry.fee,
+                fee: info.entry.fee,
                 height: info.entry.height,
                 id: info.entry.id,
                 next: info.next,
@@ -1936,6 +1937,75 @@ impl Server {
               })
             })
             .collect::<Result<Vec<api::OrdxBlockInscription>, ServerError>>()?,
+        })
+      }
+      .into_response(),
+    )
+  }
+
+  async fn ordx_block_tx_outputs_inscriptions(
+    Extension(server_config): Extension<Arc<ServerConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+    Path(DeserializeFromStr(block_height)): Path<DeserializeFromStr<u32>>,
+  ) -> ServerResult<Response> {
+    let block = index
+      .get_block_by_height(block_height)?
+      .ok_or_not_found(|| format!("block {block_height}"))?;
+
+    let mut inscription_id_list: Vec<InscriptionId> = Vec::new();
+    for tx in block.txdata.iter() {
+      let txid = tx.txid();
+      let output_len = tx.output.len();
+      for vout_index in 0..output_len {
+        let outpoint = OutPoint::new(txid, vout_index as u32);
+        let inscriptions = index
+          .get_inscriptions_on_output(outpoint)
+          .unwrap_or_default();
+        inscription_id_list.extend(inscriptions);
+      }
+    }
+
+    Ok(
+      {
+        Json(api::OrdxBlockTxOutputInscriptions {
+          height: block_height,
+          inscriptions: inscription_id_list
+            .par_iter()
+            .map(|inscription_id| {
+              let query_inscription_id = query::Inscription::Id(*inscription_id);
+              let info = Index::inscription_info(&index, query_inscription_id)?
+                .ok_or_not_found(|| format!("inscription {query_inscription_id}"))?;
+
+              // api inscription
+              Ok(api::OrdxInscription {
+                address: info
+                  .output
+                  .as_ref()
+                  .and_then(|o| {
+                    server_config
+                      .chain
+                      .address_from_script(&o.script_pubkey)
+                      .ok()
+                  })
+                  .map(|address| address.to_string()),
+
+                children: info.children,
+                content_length: info.inscription.content_length(),
+                content_type: info.inscription.content_type().map(|s| s.to_string()),
+                fee: info.entry.fee,
+                height: info.entry.height,
+                id: info.entry.id,
+                next: info.next,
+                number: info.entry.inscription_number,
+                parent: info.parent,
+                previous: info.previous,
+                sat: info.entry.sat,
+                satpoint: info.satpoint,
+                timestamp: timestamp(info.entry.timestamp).timestamp(),
+                value: info.output.as_ref().map(|o| o.value),
+              })
+            })
+            .collect::<Result<Vec<api::OrdxInscription>, ServerError>>()?,
         })
       }
       .into_response(),

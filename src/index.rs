@@ -822,7 +822,7 @@ impl Index {
               children: info.children,
               content_length: info.inscription.content_length(),
               content_type: info.inscription.content_type().map(|s| s.to_string()),
-              // fee: info.entry.fee,
+              fee: info.entry.fee,
               height: info.entry.height,
               id: info.entry.id,
               next: info.next,
