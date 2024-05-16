@@ -179,25 +179,25 @@ impl Output {
   }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
-pub struct OrdxOutput {
-  pub address: Option<String>,
-  pub transaction: String,
-  pub value: u64,
-}
+// #[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
+// pub struct OrdxOutput {
+//   pub address: Option<String>,
+//   pub transaction: String,
+//   pub value: u64,
+// }
 
-impl OrdxOutput {
-  pub fn new(chain: Chain, outpoint: OutPoint, output: TxOut) -> Self {
-    Self {
-      address: chain
-        .address_from_script(&output.script_pubkey)
-        .ok()
-        .map(|address| address.to_string()),
-      transaction: outpoint.txid.to_string(),
-      value: output.value,
-    }
-  }
-}
+// impl OrdxOutput {
+//   pub fn new(chain: Chain, outpoint: OutPoint, output: TxOut) -> Self {
+//     Self {
+//       address: chain
+//         .address_from_script(&output.script_pubkey)
+//         .ok()
+//         .map(|address| address.to_string()),
+//       transaction: outpoint.txid.to_string(),
+//       value: output.value,
+//     }
+//   }
+// }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Sat {
@@ -234,7 +234,7 @@ pub struct SatInscriptions {
 pub struct OrdxBlockInscription {
   pub genesesaddress: String,
   pub inscription: OrdxInscription,
-  pub output: OrdxOutput,
+  // pub output: OrdxOutput,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

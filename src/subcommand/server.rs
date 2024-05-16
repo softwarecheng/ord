@@ -1850,25 +1850,25 @@ impl Server {
                   .unwrap(),
                 vout: 0,
               };
-              let ordx_output = match ordx_inscription.satpoint.outpoint != unbound_output {
-                true => {
-                  let outpoint = ordx_inscription.satpoint.outpoint;
-                  // let sat_ranges = index.list(outpoint)?;
-                  // let inscriptions = index.get_inscriptions_on_output(outpoint)?;
-                  // let indexed = index.contains_output(&outpoint)?;
-                  // let runes = index.get_rune_balances_for_outpoint(outpoint)?;
-                  // let spent = index.is_output_spent(outpoint)?;
-                  let output = index
-                    .get_transaction(outpoint.txid)?
-                    .ok_or_not_found(|| format!("output {outpoint}"))?
-                    .output
-                    .into_iter()
-                    .nth(outpoint.vout as usize)
-                    .ok_or_not_found(|| format!("output {outpoint}"))?;
-                  Some(api::OrdxOutput::new(server_config.chain, outpoint, output))
-                }
-                false => None,
-              };
+              // let ordx_output = match ordx_inscription.satpoint.outpoint != unbound_output {
+              //   true => {
+              //     let outpoint = ordx_inscription.satpoint.outpoint;
+              //     // let sat_ranges = index.list(outpoint)?;
+              //     // let inscriptions = index.get_inscriptions_on_output(outpoint)?;
+              //     // let indexed = index.contains_output(&outpoint)?;
+              //     // let runes = index.get_rune_balances_for_outpoint(outpoint)?;
+              //     // let spent = index.is_output_spent(outpoint)?;
+              //     let output = index
+              //       .get_transaction(outpoint.txid)?
+              //       .ok_or_not_found(|| format!("output {outpoint}"))?
+              //       .output
+              //       .into_iter()
+              //       .nth(outpoint.vout as usize)
+              //       .ok_or_not_found(|| format!("output {outpoint}"))?;
+              //     Some(api::OrdxOutput::new(server_config.chain, outpoint, output))
+              //   }
+              //   false => None,
+              // };
 
               // get geneses address from address
               // When the output and inciption id are different, it means that the inscription has been traded, else this is first block tx
@@ -1932,7 +1932,7 @@ impl Server {
               Ok(api::OrdxBlockInscription {
                 genesesaddress: geneses_address,
                 inscription: ordx_inscription,
-                output: ordx_output.unwrap_or_default(),
+                // output: ordx_output.unwrap_or_default(),
               })
             })
             .collect::<Result<Vec<api::OrdxBlockInscription>, ServerError>>()?,
