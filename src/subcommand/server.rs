@@ -1961,7 +1961,13 @@ impl Server {
         let inscriptions = index
           .get_inscriptions_on_output(outpoint)
           .unwrap_or_default();
-        inscription_id_list.extend(inscriptions);
+
+        for inscription_id in &inscriptions {
+          // skip same tx for geneses new inscription, only update exist inscription with transfer
+          if inscription_id.txid != txid {
+            inscription_id_list.push(*inscription_id);
+          }
+        }
       }
     }
 
