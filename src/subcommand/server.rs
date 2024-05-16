@@ -1914,11 +1914,21 @@ impl Server {
               let geneses_address = server_config
                 .chain
                 .address_from_script(&output.script_pubkey)
-                .ok()
-                .map(|address| address.to_string())
-                .ok_or_else(|| {
-                  anyhow::Error::msg(format!("output.script_pubkey: {}", output.script_pubkey))
-                })?;
+                .map_or_else(
+                  |_| {
+                    println!(
+                      "no find address-> outpoint: {}, output.script_pubkey: {}",
+                      outpoint, output.script_pubkey
+                    );
+                    "".to_string()
+                  },
+                  |address| address.to_string(),
+                );
+              // .ok()
+              // .map(|address| address.to_string())
+              // .ok_or_else(|| {
+              //   anyhow::Error::msg(format!("output.script_pubkey: {}", output.script_pubkey))
+              // })?;
               Ok(api::OrdxBlockInscription {
                 genesesaddress: geneses_address,
                 inscription: ordx_inscription,
