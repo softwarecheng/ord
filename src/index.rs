@@ -799,7 +799,7 @@ impl Index {
       };
 
       let inscriptions = inscription_id_list
-        .par_iter()
+        .iter()
         .map(
           |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
             let query_inscription_id = query::Inscription::Id(*inscription_id);
