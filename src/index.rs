@@ -22,7 +22,7 @@ use {
   chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
-  rayon::prelude::*,
+  // rayon::prelude::*,
   redb::{
     Database, DatabaseError, MultimapTable, MultimapTableDefinition, MultimapTableHandle,
     ReadOnlyTable, ReadableMultimapTable, ReadableTable, RepairSession, StorageError, Table,
