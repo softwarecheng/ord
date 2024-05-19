@@ -898,9 +898,9 @@ impl Index {
         first_inscription_height = ordx_block_inscriptions.height + 1;
       }
     }
-
+    let max_block_num = blocks_indexed - 1;
     println!(
-      "block {first_inscription_height}->{blocks_indexed}, export {filename}, size: {:.2}MB.",
+      "block {first_inscription_height}->{max_block_num}, export {filename}, size: {:.2}MB.",
       file_size as f64 / (1024.0 * 1024.0)
     );
 
@@ -915,7 +915,7 @@ impl Index {
     let mut flush_block_number: u64 = 0;
     let mut flush_inscription_number: u64 = 0;
     let mut total_inscription_number: u64 = 0;
-    for height in first_inscription_height..=blocks_indexed {
+    for height in first_inscription_height..=max_block_num {
       let block = self
         .get_block_by_height(height)?
         .ok_or_else(|| anyhow::Error::msg(format!("block {height}")))?;
@@ -962,7 +962,7 @@ impl Index {
         );
       }
 
-      if need_flush && (flush_inscription_number % cache == 0 || height == blocks_indexed) {
+      if need_flush && (flush_inscription_number % cache == 0 || height == max_block_num) {
         writer.flush()?;
         need_flush = false;
         total_inscription_number += flush_inscription_number;
@@ -977,8 +977,8 @@ impl Index {
     writer.flush()?;
     let duration = start_time.elapsed();
     let mut block_number = 0;
-    if blocks_indexed >= first_inscription_height {
-      block_number = blocks_indexed - first_inscription_height + 1;
+    if max_block_num >= first_inscription_height {
+      block_number = max_block_num - first_inscription_height + 1;
     }
     println!(
       "complete! scan block number {block_number}, write block number {flush_block_number}, \
