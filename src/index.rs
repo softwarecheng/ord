@@ -950,6 +950,10 @@ impl Index {
         need_flush = ordx_block_inscriptions.inscriptions.len() > 0;
       }
 
+      if height == first_inscription_height {
+        write!(writer, "\n")?;
+      }
+
       if ordx_block_inscriptions.inscriptions.len() > 0 {
         let json = serde_json::to_string(&ordx_block_inscriptions)?;
         write!(writer, "{}\n", json)?;
