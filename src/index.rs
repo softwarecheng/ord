@@ -838,12 +838,7 @@ impl Index {
             };
 
             // api output
-            // let unbound_output = OutPoint {
-            //   txid: "0000000000000000000000000000000000000000000000000000000000000000"
-            //     .parse()
-            //     .unwrap(),
-            //   vout: 0,
-            // };
+            // let unbound_output = unbound_outpoint();
             // let ordx_output = match api_inscription.satpoint.outpoint != unbound_output {
             //   true => {
             //     let outpoint = api_inscription.satpoint.outpoint;
