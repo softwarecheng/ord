@@ -125,7 +125,8 @@
                 "--filename",
                 "./target/testnet-all-inscription-data.ordx",
                 "--cache",
-                "3000"
+                "3000",
+                "--parallel",
             ],
             "cwd": "${workspaceFolder}",
             "env": {
