@@ -4,6 +4,8 @@ use super::*;
 pub(crate) struct Export {
   #[arg(long, help = "export filename path")]
   filename: String,
+  #[arg(long, help = "use parallel mode")]
+  parallel: bool,
   #[arg(long, help = "cache for inscriptions")]
   cache: u64,
 }
@@ -16,6 +18,7 @@ impl Export {
     index.export_ordx(
       &self.filename,
       self.cache,
+      self.parallel,
       settings.chain(),
       settings.first_inscription_height(),
     )?;

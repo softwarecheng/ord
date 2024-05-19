@@ -22,7 +22,7 @@ use {
   chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
-  // rayon::prelude::*,
+  rayon::prelude::*,
   redb::{
     Database, DatabaseError, MultimapTable, MultimapTableDefinition, MultimapTableHandle,
     ReadOnlyTable, ReadableMultimapTable, ReadableTable, RepairSession, StorageError, Table,
@@ -701,10 +701,137 @@ impl Index {
     Ok(())
   }
 
+  pub(crate) fn get_ordx_block_inscription(
+    &self,
+    chain: Chain,
+    first_block_txid: &str,
+    inscription_id: &InscriptionId,
+  ) -> Result<api::OrdxBlockInscription, Error> {
+    let query_inscription_id = query::Inscription::Id(*inscription_id);
+    // println!("export block-> height: {height} , inscriptionid: {query_inscription_id} , firstBlockTxid: {first_block_txid}");
+    let info = Index::inscription_info(self, query_inscription_id)?
+      .ok_or_else(|| anyhow::Error::msg(format!("inscription {query_inscription_id} not found")))?;
+
+    let api_inscription = api::OrdxInscription {
+      address: info
+        .output
+        .as_ref()
+        .and_then(|o| chain.address_from_script(&o.script_pubkey).ok())
+        .map(|address| address.to_string()),
+      // charms: Charm::ALL
+      //   .iter()
+      //   .filter(|charm| charm.is_set(info.charms))
+      //   .map(|charm| charm.title().into())
+      //   .collect(),
+      children: info.children,
+      content_length: info.inscription.content_length(),
+      content_type: info.inscription.content_type().map(|s| s.to_string()),
+      fee: info.entry.fee,
+      height: info.entry.height,
+      id: info.entry.id,
+      next: info.next,
+      number: info.entry.inscription_number,
+      parent: info.parent,
+      previous: info.previous,
+      // rune: info.rune,
+      sat: info.entry.sat,
+      satpoint: info.satpoint,
+      timestamp: timestamp(info.entry.timestamp).timestamp(),
+      value: info.output.as_ref().map(|o| o.value),
+    };
+
+    // api output
+    // let unbound_output = unbound_outpoint();
+    // let ordx_output = match api_inscription.satpoint.outpoint != unbound_output {
+    //   true => {
+    //     let outpoint = api_inscription.satpoint.outpoint;
+    //     // let sat_ranges = self.list(outpoint)?;
+    //     // let inscriptions = self.get_inscriptions_on_output(outpoint)?;
+    //     // let indexed = self.contains_output(&outpoint)?;
+    //     // let runes = self.get_rune_balances_for_outpoint(outpoint)?;
+    //     // let spent = self.is_output_spent(outpoint)?;
+    //     let output = self
+    //       .get_transaction(outpoint.txid)?
+    //       .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
+    //       .output
+    //       .into_iter()
+    //       .nth(outpoint.vout as usize)
+    //       .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
+    //     Some(api::OrdxOutput::new(chain, outpoint, output))
+    //   }
+    //   false => None,
+    // };
+
+    // get geneses address from address
+    // When the output and inciption id are different, it means that the inscription has been traded, else this is first block tx
+    let mut outpoint = api_inscription.satpoint.outpoint;
+    if api_inscription.satpoint.outpoint.txid != inscription_id.txid
+      && api_inscription.satpoint.outpoint.txid.to_string() != first_block_txid
+    {
+      let mut output_index = inscription_id.index;
+      let transaction = self
+        .get_transaction(inscription_id.txid)?
+        .ok_or_else(|| anyhow::Error::msg(format!("transaction {}", inscription_id.txid)))?;
+      let output_len = transaction.output.len() as u32;
+      // cursed and blessed inscription share the same outpoint, ex: tx 219a5e5458bf0ba686f1c5660cf01652c88dec1b30c13571c43d97a9b11ac653
+      while output_index >= output_len {
+        output_index -= 1;
+      }
+      outpoint = OutPoint::new(inscription_id.txid, output_index)
+    }
+    // let sat_ranges = self.list(outpoint)?;
+    // let inscriptions = self.get_inscriptions_on_output(outpoint)?;
+    // let indexed = self.contains_output(&outpoint)?;
+    // let runes = self.get_rune_balances_for_outpoint(outpoint)?;
+    // let spent = self.is_output_spent(outpoint)?;
+    let output = self
+      .get_transaction(outpoint.txid)?
+      .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
+      .output
+      .into_iter()
+      .nth(outpoint.vout as usize)
+      .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
+    // let cloned_output = output.clone();
+    // let api_geneses_output = api::Output::new(
+    //   chain,
+    //   inscriptions,
+    //   outpoint,
+    //   output,
+    //   indexed,
+    //   runes,
+    //   sat_ranges,
+    //   spent,
+    // );
+    let geneses_address = chain
+      .address_from_script(&output.script_pubkey)
+      .map_or_else(
+        |_| {
+          println!(
+            "no find address-> outpoint: {}, output.script_pubkey: {}",
+            outpoint, output.script_pubkey
+          );
+          "".to_string()
+        },
+        |address| address.to_string(),
+      );
+    // .ok()
+    // .map(|address| address.to_string())
+    // .ok_or_else(|| {
+    //   anyhow::Error::msg(format!("output.script_pubkey: {}", output.script_pubkey))
+    // })?;
+
+    Ok(api::OrdxBlockInscription {
+      genesesaddress: geneses_address,
+      inscription: api_inscription,
+      // output: ordx_output.unwrap_or_default(),
+    })
+  }
+
   pub(crate) fn export_ordx(
     &self,
     filename: &String,
     cache: u64,
+    parallel: bool,
     chain: Chain,
     mut first_inscription_height: u32,
   ) -> Result {
@@ -798,133 +925,21 @@ impl Index {
         false => Txid::all_zeros().to_string(),
       };
 
-      let inscriptions = inscription_id_list
-        .iter()
-        // .par_iter()
-        .map(
-          |inscription_id| -> Result<api::OrdxBlockInscription, Error> {
-            let query_inscription_id = query::Inscription::Id(*inscription_id);
-            // println!("export block-> height: {height} , inscriptionid: {query_inscription_id} , firstBlockTxid: {first_block_txid}");
-            let info = Index::inscription_info(self, query_inscription_id)?.ok_or_else(|| {
-              anyhow::Error::msg(format!("inscription {query_inscription_id} not found"))
-            })?;
-
-            let api_inscription = api::OrdxInscription {
-              address: info
-                .output
-                .as_ref()
-                .and_then(|o| chain.address_from_script(&o.script_pubkey).ok())
-                .map(|address| address.to_string()),
-              // charms: Charm::ALL
-              //   .iter()
-              //   .filter(|charm| charm.is_set(info.charms))
-              //   .map(|charm| charm.title().into())
-              //   .collect(),
-              children: info.children,
-              content_length: info.inscription.content_length(),
-              content_type: info.inscription.content_type().map(|s| s.to_string()),
-              fee: info.entry.fee,
-              height: info.entry.height,
-              id: info.entry.id,
-              next: info.next,
-              number: info.entry.inscription_number,
-              parent: info.parent,
-              previous: info.previous,
-              // rune: info.rune,
-              sat: info.entry.sat,
-              satpoint: info.satpoint,
-              timestamp: timestamp(info.entry.timestamp).timestamp(),
-              value: info.output.as_ref().map(|o| o.value),
-            };
-
-            // api output
-            // let unbound_output = unbound_outpoint();
-            // let ordx_output = match api_inscription.satpoint.outpoint != unbound_output {
-            //   true => {
-            //     let outpoint = api_inscription.satpoint.outpoint;
-            //     // let sat_ranges = self.list(outpoint)?;
-            //     // let inscriptions = self.get_inscriptions_on_output(outpoint)?;
-            //     // let indexed = self.contains_output(&outpoint)?;
-            //     // let runes = self.get_rune_balances_for_outpoint(outpoint)?;
-            //     // let spent = self.is_output_spent(outpoint)?;
-            //     let output = self
-            //       .get_transaction(outpoint.txid)?
-            //       .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
-            //       .output
-            //       .into_iter()
-            //       .nth(outpoint.vout as usize)
-            //       .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-            //     Some(api::OrdxOutput::new(chain, outpoint, output))
-            //   }
-            //   false => None,
-            // };
-
-            // get geneses address from address
-            // When the output and inciption id are different, it means that the inscription has been traded, else this is first block tx
-            let mut outpoint = api_inscription.satpoint.outpoint;
-            if api_inscription.satpoint.outpoint.txid != inscription_id.txid
-              && api_inscription.satpoint.outpoint.txid.to_string() != first_block_txid
-            {
-              let mut output_index = inscription_id.index;
-              let transaction = self.get_transaction(inscription_id.txid)?.ok_or_else(|| {
-                anyhow::Error::msg(format!("transaction {}", inscription_id.txid))
-              })?;
-              let output_len = transaction.output.len() as u32;
-              // cursed and blessed inscription share the same outpoint, ex: tx 219a5e5458bf0ba686f1c5660cf01652c88dec1b30c13571c43d97a9b11ac653
-              while output_index >= output_len {
-                output_index -= 1;
-              }
-              outpoint = OutPoint::new(inscription_id.txid, output_index)
-            }
-            // let sat_ranges = self.list(outpoint)?;
-            // let inscriptions = self.get_inscriptions_on_output(outpoint)?;
-            // let indexed = self.contains_output(&outpoint)?;
-            // let runes = self.get_rune_balances_for_outpoint(outpoint)?;
-            // let spent = self.is_output_spent(outpoint)?;
-            let output = self
-              .get_transaction(outpoint.txid)?
-              .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?
-              .output
-              .into_iter()
-              .nth(outpoint.vout as usize)
-              .ok_or_else(|| anyhow::Error::msg(format!("output {outpoint}")))?;
-            // let cloned_output = output.clone();
-            // let api_geneses_output = api::Output::new(
-            //   chain,
-            //   inscriptions,
-            //   outpoint,
-            //   output,
-            //   indexed,
-            //   runes,
-            //   sat_ranges,
-            //   spent,
-            // );
-            let geneses_address = chain
-              .address_from_script(&output.script_pubkey)
-              .map_or_else(
-                |_| {
-                  println!(
-                    "no find address-> outpoint: {}, output.script_pubkey: {}",
-                    outpoint, output.script_pubkey
-                  );
-                  "".to_string()
-                },
-                |address| address.to_string(),
-              );
-            // .ok()
-            // .map(|address| address.to_string())
-            // .ok_or_else(|| {
-            //   anyhow::Error::msg(format!("output.script_pubkey: {}", output.script_pubkey))
-            // })?;
-
-            Ok(api::OrdxBlockInscription {
-              genesesaddress: geneses_address,
-              inscription: api_inscription,
-              // output: ordx_output.unwrap_or_default(),
-            })
-          },
-        )
-        .collect::<Result<Vec<api::OrdxBlockInscription>, Error>>()?;
+      let inscriptions = if parallel {
+        inscription_id_list
+          .par_iter()
+          .map(|inscription_id| {
+            self.get_ordx_block_inscription(chain.clone(), &first_block_txid, inscription_id)
+          })
+          .collect::<Result<Vec<api::OrdxBlockInscription>, Error>>()?
+      } else {
+        inscription_id_list
+          .iter()
+          .map(|inscription_id| {
+            self.get_ordx_block_inscription(chain.clone(), &first_block_txid, inscription_id)
+          })
+          .collect::<Result<Vec<api::OrdxBlockInscription>, Error>>()?
+      };
 
       let ordx_block_inscriptions = api::OrdxBlockInscriptions {
         height,
