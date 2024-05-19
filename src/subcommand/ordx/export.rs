@@ -4,7 +4,7 @@ use super::*;
 pub(crate) struct Export {
   #[arg(long, help = "export filename path")]
   filename: String,
-  #[arg(long, help = "use parallel mode")]
+  #[arg(long, help = "use parallel mode (need more memory)")]
   parallel: bool,
   #[arg(long, help = "cache for inscriptions")]
   cache: u64,
