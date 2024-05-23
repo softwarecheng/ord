@@ -8,13 +8,18 @@ pub(crate) struct Export {
   parallel: bool,
   #[arg(long, help = "cache for inscriptions")]
   cache: u64,
+  #[arg(long, help = "first update index to max height")]
+  update_index: bool,
 }
 
 impl Export {
   pub(crate) fn run(self, settings: Settings) -> SubcommandResult {
     let index = Index::open(&settings)?;
 
-    index.update()?;
+    if self.update_index {
+      index.update()?;
+    }
+
     index.export_ordx(
       &self.filename,
       self.cache,
