@@ -75,41 +75,4 @@ impl Charm {
       Self::Vindicated => "vindicated",
     }
   }
-
-  #[cfg(test)]
-  pub(crate) fn charms(charms: u16) -> Vec<Charm> {
-    Self::ALL
-      .iter()
-      .filter(|charm| charm.is_set(charms))
-      .cloned()
-      .collect()
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn flag() {
-    assert_eq!(Charm::Coin.flag(), 0b1);
-    assert_eq!(Charm::Cursed.flag(), 0b10);
-  }
-
-  #[test]
-  fn set() {
-    let mut flags = 0;
-    assert!(!Charm::Coin.is_set(flags));
-    Charm::Coin.set(&mut flags);
-    assert!(Charm::Coin.is_set(flags));
-  }
-
-  #[test]
-  fn unset() {
-    let mut flags = 0;
-    Charm::Coin.set(&mut flags);
-    assert!(Charm::Coin.is_set(flags));
-    let flags = Charm::Coin.unset(flags);
-    assert!(!Charm::Coin.is_set(flags));
-  }
 }

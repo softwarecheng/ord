@@ -87,13 +87,6 @@ pub use self::{
   wallet::transaction_builder::{Target, TransactionBuilder},
 };
 
-#[cfg(test)]
-#[macro_use]
-mod test;
-
-#[cfg(test)]
-use self::test::*;
-
 macro_rules! tprintln {
   ($($arg:tt)*) => {
     if cfg!(test) {

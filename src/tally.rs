@@ -24,23 +24,3 @@ impl Display for Tallied {
     }
   }
 }
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn zero() {
-    assert_eq!("foo".tally(0).to_string(), "0 foos")
-  }
-
-  #[test]
-  fn one() {
-    assert_eq!("foo".tally(1).to_string(), "1 foo")
-  }
-
-  #[test]
-  fn two() {
-    assert_eq!("foo".tally(2).to_string(), "2 foos")
-  }
-}

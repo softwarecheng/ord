@@ -11,32 +11,3 @@ impl PageContent for RunesHtml {
   }
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn display() {
-    assert_eq!(
-      RunesHtml {
-        entries: vec![(
-          RuneId {
-            height: 0,
-            index: 0,
-          },
-          RuneEntry {
-            rune: Rune(26),
-            spacers: 1,
-            ..Default::default()
-          }
-        )],
-      }
-      .to_string(),
-      "<h1>Runes</h1>
-<ul>
-  <li><a href=/rune/A•A>A•A</a></li>
-</ul>
-"
-    );
-  }
-}

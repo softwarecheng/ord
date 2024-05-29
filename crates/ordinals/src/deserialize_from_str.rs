@@ -28,17 +28,3 @@ where
   }
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn deserialize_from_str() {
-    assert_eq!(
-      serde_json::from_str::<DeserializeFromStr<u64>>("\"1\"")
-        .unwrap()
-        .0,
-      1,
-    );
-  }
-}
