@@ -26,7 +26,7 @@ axum-server = "0.5.0"
 base64 = "0.22.0"
 bech32 = "0.11.0"
 bip39 = "2.0.0"
-bitcoin = { version = "0.30.1", features = ["rand"] }
+bitcoint4 = { version = "0.30.2", features = ["rand"] }
 boilerplate = { version = "1.0.0", features = ["axum"] }
 brotli = "3.4.0"
 chrono = { version = "0.4.19", features = ["serde"] }
@@ -49,7 +49,7 @@ mime = "0.3.16"
 mime_guess = "2.0.4"
 miniscript = "10.0.0"
 mp4 = "0.14.0"
-ord-bitcoincore-rpc = "0.17.2"
+ord-bitcoincoret4-rpc = "0.17.2"
 ordinals = { version = "0.0.4", path = "crates/ordinals" }
 redb = "1.5.0"
 regex = "1.6.0"

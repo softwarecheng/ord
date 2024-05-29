@@ -1,75 +1,73 @@
 use {
-  self::{ImageRendering::*, Language::*, Media::*},
-  super::*,
-  brotli::enc::backward_references::BrotliEncoderMode::{
-    self, BROTLI_MODE_FONT as FONT, BROTLI_MODE_GENERIC as GENERIC, BROTLI_MODE_TEXT as TEXT,
-  },
-  mp4::{MediaType, Mp4Reader, TrackType},
-  std::{fs::File, io::BufReader},
+    self::{ImageRendering::*, Language::*, Media::*},
+    super::*,
+    brotli::enc::backward_references::BrotliEncoderMode::{
+        self, BROTLI_MODE_FONT as FONT, BROTLI_MODE_GENERIC as GENERIC, BROTLI_MODE_TEXT as TEXT,
+    },
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub(crate) enum Media {
-  Audio,
-  Code(Language),
-  Font,
-  Iframe,
-  Image(ImageRendering),
-  Markdown,
-  Model,
-  Pdf,
-  Text,
-  Unknown,
-  Video,
+    Audio,
+    Code(Language),
+    Font,
+    Iframe,
+    Image(ImageRendering),
+    Markdown,
+    Model,
+    Pdf,
+    Text,
+    Unknown,
+    Video,
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub(crate) enum Language {
-  Css,
-  JavaScript,
-  Json,
-  Python,
-  Yaml,
+    Css,
+    JavaScript,
+    Json,
+    Python,
+    Yaml,
 }
 
 impl Display for Language {
-  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-    write!(
-      f,
-      "{}",
-      match self {
-        Self::Css => "css",
-        Self::JavaScript => "javascript",
-        Self::Json => "json",
-        Self::Python => "python",
-        Self::Yaml => "yaml",
-      }
-    )
-  }
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Css => "css",
+                Self::JavaScript => "javascript",
+                Self::Json => "json",
+                Self::Python => "python",
+                Self::Yaml => "yaml",
+            }
+        )
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub(crate) enum ImageRendering {
-  Auto,
-  Pixelated,
+    Auto,
+    Pixelated,
 }
 
 impl Display for ImageRendering {
-  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-    write!(
-      f,
-      "{}",
-      match self {
-        Self::Auto => "auto",
-        Self::Pixelated => "pixelated",
-      }
-    )
-  }
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Auto => "auto",
+                Self::Pixelated => "pixelated",
+            }
+        )
+    }
 }
 
 impl Media {
-  #[rustfmt::skip]
-  const TABLE: &'static [(&'static str, BrotliEncoderMode, Media, &'static [&'static str])] = &[
+    #[rustfmt::skip]
+    const TABLE: &'static [(&'static str, BrotliEncoderMode, Media, &'static [&'static str])] = &[
     ("application/cbor",            GENERIC, Unknown,          &["cbor"]),
     ("application/json",            TEXT,    Code(Json),       &["json"]),
     ("application/octet-stream",    GENERIC, Unknown,          &["bin"]),
@@ -108,73 +106,18 @@ impl Media {
     ("video/mp4",                   GENERIC, Video,            &["mp4"]),
     ("video/webm",                  GENERIC, Video,            &["webm"]),
   ];
-
-  pub(crate) fn content_type_for_path(
-    path: &Path,
-  ) -> Result<(&'static str, BrotliEncoderMode), Error> {
-    let extension = path
-      .extension()
-      .ok_or_else(|| anyhow!("file must have extension"))?
-      .to_str()
-      .ok_or_else(|| anyhow!("unrecognized extension"))?;
-
-    let extension = extension.to_lowercase();
-
-    if extension == "mp4" {
-      Media::check_mp4_codec(path)?;
-    }
-
-    for (content_type, mode, _, extensions) in Self::TABLE {
-      if extensions.contains(&extension.as_str()) {
-        return Ok((*content_type, *mode));
-      }
-    }
-
-    let mut extensions = Self::TABLE
-      .iter()
-      .flat_map(|(_, _, _, extensions)| extensions.first().cloned())
-      .collect::<Vec<&str>>();
-
-    extensions.sort();
-
-    Err(anyhow!(
-      "unsupported file extension `.{extension}`, supported extensions: {}",
-      extensions.join(" "),
-    ))
-  }
-
-  pub(crate) fn check_mp4_codec(path: &Path) -> Result<(), Error> {
-    let f = File::open(path)?;
-    let size = f.metadata()?.len();
-    let reader = BufReader::new(f);
-
-    let mp4 = Mp4Reader::read_header(reader, size)?;
-
-    for track in mp4.tracks().values() {
-      if let TrackType::Video = track.track_type()? {
-        let media_type = track.media_type()?;
-        if media_type != MediaType::H264 {
-          return Err(anyhow!(
-            "Unsupported video codec, only H.264 is supported in MP4: {media_type}"
-          ));
-        }
-      }
-    }
-
-    Ok(())
-  }
 }
 
 impl FromStr for Media {
-  type Err = Error;
+    type Err = Error;
 
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    for entry in Self::TABLE {
-      if entry.0 == s {
-        return Ok(entry.2);
-      }
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for entry in Self::TABLE {
+            if entry.0 == s {
+                return Ok(entry.2);
+            }
+        }
+
+        Err(anyhow!("unknown content type: {s}"))
     }
-
-    Err(anyhow!("unknown content type: {s}"))
-  }
 }
