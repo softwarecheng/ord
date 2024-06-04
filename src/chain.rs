@@ -40,7 +40,7 @@ impl Chain {
             Self::Regtest => 0,
             Self::Signet => 112402,
             Self::Testnet => 2413343,
-            Self::Testnet4 => 0,
+            Self::Testnet4 => 27228,
         }
     }
 
