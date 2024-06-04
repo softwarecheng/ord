@@ -26,7 +26,7 @@ axum-server = "0.5.0"
 base64 = "0.22.0"
 bech32 = "0.11.0"
 bip39 = "2.0.0"
-bitcoint4 = { version = "0.30.2", features = ["rand"] }
+bitcoint4 = { version = "0.30.3", features = ["rand"] }
 boilerplate = { version = "1.0.0", features = ["axum"] }
 brotli = "3.4.0"
 chrono = { version = "0.4.19", features = ["serde"] }

@@ -10,6 +10,7 @@ pub enum Chain {
     Testnet,
     Signet,
     Regtest,
+    Testnet4,
 }
 
 impl Chain {
@@ -19,6 +20,7 @@ impl Chain {
             Self::Testnet => Network::Testnet,
             Self::Signet => Network::Signet,
             Self::Regtest => Network::Regtest,
+            Self::Testnet4 => Network::Testnet4,
         }
     }
 
@@ -28,6 +30,7 @@ impl Chain {
             Self::Regtest => 18443,
             Self::Signet => 38332,
             Self::Testnet => 18332,
+            Self::Testnet4 => 28322,
         }
     }
 
@@ -37,6 +40,7 @@ impl Chain {
             Self::Regtest => 0,
             Self::Signet => 112402,
             Self::Testnet => 2413343,
+            Self::Testnet4 => 0,
         }
     }
 
@@ -47,6 +51,7 @@ impl Chain {
                 Self::Regtest => 0,
                 Self::Signet => 0,
                 Self::Testnet => 12,
+                Self::Testnet4 => 0,
             }
     }
 
@@ -56,6 +61,7 @@ impl Chain {
             Self::Regtest => 110,
             Self::Signet => 175392,
             Self::Testnet => 2544192,
+            Self::Testnet4 => 0,
         }
     }
 
@@ -83,6 +89,7 @@ impl Chain {
             Self::Testnet => data_dir.as_ref().join("testnet3"),
             Self::Signet => data_dir.as_ref().join("signet"),
             Self::Regtest => data_dir.as_ref().join("regtest"),
+            Self::Testnet4 => data_dir.as_ref().join("testnet4"),
         }
     }
 }
@@ -97,6 +104,7 @@ impl Display for Chain {
                 Self::Regtest => "regtest",
                 Self::Signet => "signet",
                 Self::Testnet => "testnet",
+                Self::Testnet4 => "testnet4",
             }
         )
     }
